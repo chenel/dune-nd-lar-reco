@@ -19,10 +19,10 @@ model:
   name: uresnet_ppn_chain
   modules:
     ppn:
-      num_strides: 6
-      filters: 16
-      num_classes: 5
-      data_dim: 3
+      num_strides: 6   # needs to match UResNet.  (allows PPN to understand its input)
+      filters: 16      # ditto
+      num_classes: 5   # ditto
+      data_dim: 3      # ditto
       downsample_ghost: False
       use_encoding: False
       ppn_num_conv: 1
@@ -32,13 +32,13 @@ model:
       spatial_size: 768
     uresnet_lonely:
       freeze: False
-      num_strides: 6
-      filters: 16
+      num_strides: 6    # (number of downsample layers) + 1
+      filters: 16       # number of features generated at first layer, doubled (?) each layer
       num_classes: 5
       data_dim: 3
       spatial_size: 24576
-      ghost: False
-      features: 1
+      ghost: False      # artifacts from rebuilding 3D out of 2D views
+      features: 1       # number of input features
   network_input:
     - input_data
 trainval:
