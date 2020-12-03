@@ -18,7 +18,7 @@ iotool:
       particles_label:
         - parse_particle_points  # this parser takes two arguments: the tree with EventSparseTensor3Ds and the one with the LArCV particles
         - sparse3d_geant4_masked
-        - particle_geant4
+        - particle_geant4_corrected
 model:
   name: uresnet_ppn_chain
   modules:
