@@ -5,6 +5,7 @@ iotool:
   collate_fn: CollateSparse
   sampler:
     name: RandomSequenceSampler
+#    name: SequentialBatchSampler  # use if you want to overtrain on a fixed sample (also set the batch size to the full sample size)
   dataset:
     name: LArCVDataset
     limit_num_files: 10
@@ -53,10 +54,10 @@ trainval:
   seed: 123
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
-  weight_prefix: weights/snapshot
-  iterations: 200
+  weight_prefix: snapshot
+  iterations: 10000
   report_step: 1
   checkpoint_step: 100
-  log_dir: log_inference
+  log_dir: log_train
   train: True
   debug: False
