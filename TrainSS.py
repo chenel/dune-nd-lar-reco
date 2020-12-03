@@ -7,15 +7,17 @@
 """
 
 import argparse
-import datetime
+import os.path
 import yaml
 
 import mlreco.main_funcs
 
-def LoadConfig(filename, input_files, random_seed=None, num_iterations=None, checkpoint_freq=None, debug=False, use_gpu=True):
+def LoadConfig(filename, input_files, output_dir, random_seed=None, num_iterations=None, checkpoint_freq=None, debug=False, use_gpu=True):
 	cfg = yaml.load(open(filename))
 
 	cfg["iotool"]["dataset"]["data_keys"] = input_files
+	cfg["trainval"]["log_dir"] = output_dir
+	cfg["trainval"]["weight_prefix"] = os.path.join(output_dir, cfg["trainval"]["weight_prefix"] if "weight_prefix" in cfg["trainval"] else "")
 	cfg["trainval"]["gpus"] = "0" if use_gpu else ""
 	cfg["trainval"]["debug"] = debug
 
@@ -40,8 +42,8 @@ def ParseArgs():
 	                    help="YAML base configuration that will be augmented with other arguments.")
 	parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
 	                    help="Supera input .root file(s) to use for training.")
-	parser.add_argument("--log_dir", required=True,
-	                    help="Directory to write log files into.")
+	parser.add_argument("--output_dir", required=True,
+	                    help="Directory to write output files into.")
 
 	training_group = parser.add_argument_group("Training parameters (override the configuration)")
 	training_group.add_argument("--random-seed", type=int,
@@ -62,6 +64,7 @@ if __name__ == "__main__":
 
 	cfg = LoadConfig(args.config_file,
 	                 args.input_file,
+	                 args.output_dir,
 	                 random_seed=args.random_seed,
 	                 num_iterations=args.num_iterations,
 	                 checkpoint_freq=args.chkpt_freq,
