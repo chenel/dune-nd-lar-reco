@@ -14,7 +14,8 @@ import seaborn
 
 from larcv import larcv
 
-SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape")}
+LABELS_TO_IGNORE = ("Ghost", "Unknown")
+SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
 
 class Hist:
 	def __init__(self, dim=1, norm=None):
@@ -61,6 +62,9 @@ def HistSSPerformance(data, hists):
 				h.data = hist
 				hists[hist_name] = h
 
+# def HistPPNPerformance(data, hists):
+# 	for evt_idx in range(len(data["raw_data"]["segment_label"])):
+
 def PlotHists(hists, outdir):
 
 	# make a migration matrix for the segmentation
@@ -96,17 +100,24 @@ def PlotHists(hists, outdir):
 	ax.xaxis.set_ticks_position("top")
 	ax.set_ylabel("True label", size="large")
 	ax.tick_params(axis="y", rotation=0)
-	plt.savefig(os.path.join(outdir, "ss_migration.png"))
+	for ext in ("png", "pdf"):
+		plt.savefig(os.path.join(outdir, "ss_migration." + ext))
 
 
 def Load(filenames):
 	for f in filenames:
 		with open(f, "rb"):
-			data = numpy.load(f, allow_pickle=True)
+			datafile = numpy.load(f, allow_pickle=True)
 
 			# these are usually dicts, so the actual type needs to be reconstructed
-			data = {k: data[k].item() for k in data}
-		assert all(k in data for k in ("raw_data", "ss_output"))
+			data = {}
+			for k in datafile:
+				print("Loading key:", k, type(datafile[k]))
+				try:
+					data[k] = datafile[k].item()
+				except:
+					data[k] = datafile[k]
+		assert all(k in data for k in ("segment_label", "segmentation"))
 		print("Loaded", len(data), "keys from file:", f)
 		print("   keys =", [(k, type(data[k])) for k in data])
 		yield data
