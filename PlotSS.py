@@ -36,16 +36,16 @@ def ParseArgs():
 
 def HistSSPerformance(data, hists):
 	# really I should reformat the data so that the event number is one of the columns...
-	for evt_idx in range(len(data["raw_data"]["segment_label"])):
+	for evt_idx in range(len(data["segment_label"])):
 		# idea: histogram the network's deduced label for classes of true labels.
 		# we'll make a migration matrix out of them later
-		len_true = len(data["raw_data"]["segment_label"][evt_idx])
-		len_reco = len(data["ss_output"]["segmentation"][evt_idx])
+		len_true = len(data["segment_label"][evt_idx])
+		len_reco = len(data["segmentation"][evt_idx])
 		assert len_true == len_reco, \
 		       "true and reco labels have different sizes!  true = %d, reco = %d" % (len_true, len_reco)
 
-		true_labels = data["raw_data"]["segment_label"][evt_idx][:, 4]                 # first 3 indices are the spatial position
-		reco_labels = numpy.argmax(data["ss_output"]["segmentation"][evt_idx], axis=1) # scores for each label.  find the index of the highest one
+		true_labels = data["segment_label"][evt_idx][:, 4]                 # first 3 indices are the spatial position
+		reco_labels = numpy.argmax(data["segmentation"][evt_idx], axis=1) # scores for each label.  find the index of the highest one
 
 		for label_enum, label in SHAPE_LABELS.items():
 			hist_name = "segmentation_" + label
