@@ -55,7 +55,7 @@ trainval:
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: snapshot
-  iterations: 10000
+  iterations: 15000
   report_step: 1
   checkpoint_step: 100
   log_dir: log_train
