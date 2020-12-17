@@ -10,11 +10,11 @@ iotool:
     limit_num_files: 10
     schema:
       input_data:
-        - parse_sparse3d_scn
-        - sparse3d_geant4
+        - parse_sparse3d_scn  # this parser takes one argument: the tree with EventSparseTensor3Ds
+        - sparse3d_geant4 # sparse3d_pcluster_masked     # this is the name of the tree
       segment_label:
-        - parse_sparse3d_scn
-        - sparse3d_geant4_semantics
+        - parse_sparse3d_scn  # this parser takes one argument: the tree with particle labels
+        - sparse3d_pcluster_semantics
 model:
   name: uresnet_ppn_chain
   modules:
