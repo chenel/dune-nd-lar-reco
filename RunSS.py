@@ -69,9 +69,10 @@ if __name__ == "__main__":
 			d, o = handlers.trainer.forward(it)
 		except StopIteration:
 			break
-
-		evt_counter += len(d[key])
-		print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
+		finally:
+			evt_counter += len(d[key])
+			print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
+			sys.stdout.flush()
 
 		# print(d["input_data"])
 		# print(d["segment_label"])
@@ -102,7 +103,6 @@ if __name__ == "__main__":
 					all_batches[k] = []
 				all_batches[k] += this_batch[k]
 
-		sys.stdout.flush()
-
+	data.update(output)
 	with open(args.output_file, "wb") as outf:
-		numpy.savez(outf, raw_data=data, ss_output=output)
+		numpy.savez(outf, **data)
