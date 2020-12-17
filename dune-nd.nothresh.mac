@@ -1,0 +1,15 @@
+/edep/db/set/neutronThreshold 0 MeV 
+/edep/db/set/lengthThreshold 0 mm
+/edep/db/set/gammaThreshold 0 MeV
+#/edep/hitLength LArTracker 0.5 mm
+/edep/update
+
+/generator/kinematics/set rooTracker
+/generator/kinematics/rooTracker/input /media/hdd1/jwolcott/data/dune/nd/nd-lar-reco/nd.fhc.0.gtrac.root
+/generator/position/set free
+/generator/time/set free
+/generator/count/fixed/number 1
+/generator/count/set fixed
+/generator/add
+
+/run/beamOn 1616
