@@ -59,6 +59,8 @@ model:
         spatial_size: 1920
         ghost: False      # artifacts from rebuilding 3D out of 2D views
         features: 1       # number of input features
+        model_path: '/gpfs/slac/staas/fs1/g/neutrino/jwolcott/data/dune/nd/nd-lar-reco/train/uresnet+ppn-1file-15k-nothresh-alltruth//snapshot-14999.ckpt'  # load these pre-trained weights as starting point
+
 
       # "point of interest" network
       # (note: depends on UResNet image filters from uresnet_lonely above; don't run without)
@@ -74,6 +76,7 @@ model:
         ppn1_size: 24
         ppn2_size: 96
         spatial_size: 1920
+        model_path: '/gpfs/slac/staas/fs1/g/neutrino/jwolcott/data/dune/nd/nd-lar-reco/train/uresnet+ppn-1file-15k-nothresh-alltruth//snapshot-14999.ckpt'  # load these pre-trained weights as starting point
 
     # The clustering stack is composed of a couple of algorithms:
     # DBSCAN makes 'fragments' (groups of neighboring hits of the same semantic type) first.
@@ -233,7 +236,8 @@ model:
 
 trainval:
   seed: 123
-  concat_result: ['embeddings', 'seediness', 'margins', 'fragments','frag_edge_index','frag_edge_pred','frag_node_pred','frag_group_pred','particles','inter_edge_index','inter_edge_pred']
+  # these are internally-produced
+  concat_result: ['embeddings', 'seediness', 'margins', 'clust_fragments', 'fragments','frag_edge_index','frag_edge_pred','frag_node_pred','frag_group_pred','particles','inter_edge_index','inter_edge_pred']
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: snapshot
