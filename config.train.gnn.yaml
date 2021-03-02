@@ -81,8 +81,10 @@ model:
 
     # The clustering stack is composed of a couple of algorithms:
     # DBSCAN makes 'fragments' (groups of neighboring hits of the same semantic type) first.
-    # the 'track-type' fragments are internally regrouped by constructing a graph of fragments
-    # and connecting those whose ends are within the DBSCAN grouping distance.
+    # the 'track-type' fragments are internally regrouped either
+    #    (a) making a second pass at building fragments within each primary fragment after voxels near PPN fragments are masked out,
+    #        then reassociating to this second set of fragments;
+    # or (b) by constructing a graph of fragments and connecting those whose ends are within the DBSCAN grouping distance.
     dbscan_frag:
       dim: 3
       min_samples: 1
@@ -97,12 +99,12 @@ model:
       delta_label: 3   # needs to match larcv::kShapeDelta
       track_clustering_method: 'closest_path' # masked_dbscan, closest_path
       ppn_score_threshold: 0.9
-      ppn_type_threshold: 0.3
-      ppn_distance_threshold: 1.999
+      ppn_type_threshold: 1.999
+      ppn_type_score_threshold: 0.5
       ppn_mask_radius: 5
 
     # Then, once clusters are made then we can make particle candidates out of them:
-    # DBScan fragments of "track" hits are taken to be tracks,
+    # DBScan fragments of "track" hits are taken to be tracks (see above),
     # and a GNN is used to group the "shower" DBScan fragments into showers.
     grappa_shower:
       base:
