@@ -13,12 +13,29 @@ import sys
 import yaml
 
 import mlreco.main_funcs
+from mlreco.utils.ppn import uresnet_ppn_type_point_selector
 
 
 class RunType(enum.Enum):
 	TRAIN = enum.auto()
 	INFERENCE = enum.auto()
 
+
+def PPNPostProcessing(data, output):
+	# there's post-processing that needs to be done with PPN before we transform coordinates
+	missing_products = [p in data for p in ("points", "mask_ppn2", "segmentation")]
+	if any(missing_products):
+		print("Warning: missing products", missing_products, " so can't do PPN post-processing")
+		return []
+
+	ppn = [None, ] * len(data["input_data"])
+	for entry in range(len(data["input_data"])):
+		ppn[entry] = uresnet_ppn_type_point_selector(data['input_data'][entry],
+		                                             output,
+		                                             entry=entry,
+		                                             score_threshold=0.5,
+		                                             type_threshold=2)  # latter two args are from Laura D...
+	output["ppn_post"] = ppn
 
 def ProcessData(cfg, before=None, during=None, max_events=None):
 	"""
@@ -68,6 +85,8 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 
 		if max_events is not None and evt_counter > max_events:
 			break
+
+	PPNPostProcessing(data, output)
 
 	data.update(output)
 
