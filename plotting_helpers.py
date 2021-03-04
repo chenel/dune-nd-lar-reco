@@ -2,7 +2,7 @@ import itertools
 import numpy
 import os.path
 
-import larcv
+from larcv import larcv
 
 LABELS_TO_IGNORE = ("Ghost", "Unknown")
 SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
@@ -17,19 +17,20 @@ class Hist(object):
 		self.data = data
 
 
-def req_vars_hist(fn, var_names):
-	def _inner(data, hists):
-		vars_missing = [v not in data for v in var_names]
-		if len(vars_missing) > 0:
-			print("Warning: var(s)", vars_missing, "missing from products. skipping plots from function:", fn)
-			return
+def req_vars_hist(var_names):
+	def decorator(fn):
+		def _inner(fn, data, hists):
+			vars_missing = [v not in data for v in var_names]
+			if len(vars_missing) > 0:
+				print("Warning: var(s)", vars_missing, "missing from products. skipping plots from function:", fn)
+				return
 
-		return fn(data, hists)
+			return fn(data, hists)
+		return _inner
+	return decorator
 
-	return _inner
 
-
-def hist_aggregate(fn, hist_name, **hist_args):
+def hist_aggregate(hist_name, **hist_args):
 	"""
 	Decorator to manage creating/updating a NumPy histogram inside a collection.
 
@@ -38,20 +39,23 @@ def hist_aggregate(fn, hist_name, **hist_args):
 
 	Arguments to numpy.histogram() (e.g., 'bins', 'range') may be specified as keyword arguments.
 	"""
-	def _inner(vals, hist_collection):
-		vals = fn(vals)
-		hist, bins = numpy.histogram(vals, **hist_args)
+	def decorator(fn):
+		def _inner(vals, hist_collection):
+			vals = fn(vals)
+			hist, bins = numpy.histogram(vals, **hist_args)
 
-		if hist_name in hist_collection:
-			assert all(hist_collection[hist_name].bins == bins)
-			hist_collection[hist_name].data += hist
-		else:
-			h = Hist()
-			h.bins = bins
-			h.data = hist
-			hist_collection[hist_name] = h
+			if hist_name in hist_collection:
+				assert all(hist_collection[hist_name].bins == bins)
+				hist_collection[hist_name].data += hist
+			else:
+				h = Hist()
+				h.bins = bins
+				h.data = hist
+				hist_collection[hist_name] = h
 
-	return _inner
+		return _inner
+
+	return decorator
 
 
 def savefig(fig, name_stub, outdir, fmts):
