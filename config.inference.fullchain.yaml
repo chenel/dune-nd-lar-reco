@@ -38,7 +38,7 @@ model:
       enable_cnn_clust: False
       enable_gnn_shower: True
       use_ppn_in_gnn: True
-      enable_gnn_tracks: False
+      enable_gnn_tracks: True
       enable_gnn_int: False
       enable_ghost: False
 
@@ -87,8 +87,8 @@ model:
       delta_label: 3   # needs to match larcv::kShapeDelta
       track_clustering_method: 'closest_path' # masked_dbscan, closest_path
       ppn_score_threshold: 0.9
-      ppn_type_threshold: 0.3
-      ppn_distance_threshold: 1.999
+      ppn_type_threshold: 1.999
+      ppn_type_score_threshold: 0.5
       ppn_mask_radius: 5
 
     # Then, once clusters are made then we can make particle candidates out of them:
@@ -149,6 +149,41 @@ model:
         balance_classes: False
         target: group
         high_purity: True
+
+    # Optionally, a GNN can also be used to connect the track-type fragments together.
+    # (it's off by default; see the flag 'enable_gnn_tracks' above under 'chain')
+    grappa_track:
+      model_name: 'track_gnn'
+      base:
+        node_type: 1
+        node_min_size: 10
+      node_encoder:
+        name: 'geo'
+        use_numpy: True
+      edge_encoder:
+        name: 'geo'
+        use_numpy: True
+      gnn_model:
+        name: modular_meta
+        edge_feats: 19
+        node_feats: 16 #22 #w/ start point and direction
+        node_classes: 2
+        edge_classes: 2
+        node_output_feats: 64
+        edge_output_feats: 64
+        aggr: 'add'
+        leakiness: 0.1
+        num_mp: 3
+    grappa_track_loss:
+      edge_loss:
+        name: channel
+        loss: CE
+        reduction: sum
+        balance_classes: False
+        target: group
+        high_purity: True
+        source_col: 5
+        target_col: 6
 
     # With particles in hand, we can assemble them into an "interaction" using another GNN.
     grappa_inter:
@@ -220,7 +255,10 @@ model:
 
 trainval:
   seed: 123
-  concat_result: ['embeddings', 'seediness', 'margins', 'fragments','frag_edge_index','frag_edge_pred','frag_node_pred','frag_group_pred','particles','inter_edge_index','inter_edge_pred']
+  concat_result: ['embeddings', 'seediness', 'margins',
+                  'clust_fragments', 'fragments', 'frag_edge_index', 'frag_edge_pred', 'frag_node_pred', 'frag_group_pred',
+                  'track_fragments', 'track_node_pred', 'track_edge_pred', 'track_edge_index', 'track_group_pred',
+                  'particles', 'inter_edge_index', 'inter_edge_pred']
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: weights/snapshot
