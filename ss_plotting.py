@@ -1,41 +1,13 @@
-"""
-  PlotSS.py : Make some diagnostic plots of the semantic segmentation output
-
-  Original author:  J. Wolcott <jwolcott@fnal.gov>
-             Date:  November 2020
-"""
-
-import argparse
-import collections
+from matplotlib import pyplot as plt
 import numpy
-import matplotlib.pyplot as plt
 import os.path
 import seaborn
 
-from larcv import larcv
+import plotting_helpers
 
-LABELS_TO_IGNORE = ("Ghost", "Unknown")
-SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
 
-class Hist:
-	def __init__(self, dim=1, norm=None):
-		self.dim = dim
-		self.norm = norm
-
-		self.bins = None
-		self.data = None
-
-def ParseArgs():
-	parser = argparse.ArgumentParser()
-
-	parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
-	                    help=".npz format file(s) containing reconstructed events.")
-	parser.add_argument("--output_dir", "-o", required=True,
-	                    help="Target directory to write output plots.")
-
-	return parser.parse_args()
-
-def HistSSPerformance(data, hists):
+@plotting_helpers.req_vars_hist(["segment_label", "segmentation"])
+def BuildHists(data, hists):
 	# really I should reformat the data so that the event number is one of the columns...
 	for evt_idx in range(len(data["segment_label"])):
 		# idea: histogram the network's deduced label for classes of true labels.
@@ -48,16 +20,19 @@ def HistSSPerformance(data, hists):
 		true_labels = data["segment_label"][evt_idx][:, 4]                 # first 3 indices are the spatial position
 		reco_labels = numpy.argmax(data["segmentation"][evt_idx], axis=1) # scores for each label.  find the index of the highest one
 
-		for label_enum, label in SHAPE_LABELS.items():
+		for label_enum, label in plotting_helpers.SHAPE_LABELS.items():
 			hist_name = "segmentation_" + label
 #			print(true_labels == label_enum)
-			hist, bins = numpy.histogram(reco_labels[true_labels == label_enum], bins=len(SHAPE_LABELS), range=(min(SHAPE_LABELS), max(SHAPE_LABELS)+1))
+			hist, bins = numpy.histogram(reco_labels[true_labels == label_enum],
+			                             bins=len(plotting_helpers.SHAPE_LABELS),
+			                             range=(min(plotting_helpers.SHAPE_LABELS),
+			                                    max(plotting_helpers.SHAPE_LABELS)+1))
 #			print("bins:",bins)
 			if hist_name in hists:
 				assert all(hists[hist_name].bins == bins)
 				hists[hist_name].data += hist
 			else:
-				h = Hist()
+				h = plotting_helpers.Hist()
 				h.bins = bins
 				h.data = hist
 				hists[hist_name] = h
@@ -65,11 +40,12 @@ def HistSSPerformance(data, hists):
 # def HistPPNPerformance(data, hists):
 # 	for evt_idx in range(len(data["raw_data"]["segment_label"])):
 
-def PlotHists(hists, outdir):
+
+def PlotHists(hists, outdir, fmts):
 
 	# make a migration matrix for the segmentation
-	mig_mx = [None,] * len(SHAPE_LABELS)
-	label_idx_by_name = dict((v, k) for k, v in SHAPE_LABELS.items())
+	mig_mx = [None,] * len(plotting_helpers.SHAPE_LABELS)
+	label_idx_by_name = dict((v, k) for k, v in plotting_helpers.SHAPE_LABELS.items())
 	for histname, hist in hists.items():
 		if not histname.startswith("segmentation_"):
 			continue
@@ -78,10 +54,10 @@ def PlotHists(hists, outdir):
 		mig_mx[label_idx_by_name[histname.split("_")[1]]] = hist.data
 
 	mig_mx = numpy.array(mig_mx)
-	import pprint
-	pprint.pprint(mig_mx)
+	# import pprint
+	# pprint.pprint(mig_mx)
 
-	shape_labels_sorted = [SHAPE_LABELS[idx] for idx in sorted(SHAPE_LABELS)]
+	shape_labels_sorted = [plotting_helpers.SHAPE_LABELS[idx] for idx in sorted(plotting_helpers.SHAPE_LABELS)]
 	bins = hists[next(iter(hists))].bins[:-1]
 	# for axis_name in "x", "y":
 	# 	# set the axis labels to the correct strings
@@ -100,34 +76,5 @@ def PlotHists(hists, outdir):
 	ax.xaxis.set_ticks_position("top")
 	ax.set_ylabel("True label", size="large")
 	ax.tick_params(axis="y", rotation=0)
-	for ext in ("png", "pdf"):
-		plt.savefig(os.path.join(outdir, "ss_migration." + ext))
 
-
-def Load(filenames):
-	for f in filenames:
-		with open(f, "rb"):
-			datafile = numpy.load(f, allow_pickle=True)
-
-			# these are usually dicts, so the actual type needs to be reconstructed
-			data = {}
-			for k in datafile:
-				print("Loading key:", k, type(datafile[k]))
-				try:
-					data[k] = datafile[k].item()
-				except:
-					data[k] = datafile[k]
-		assert all(k in data for k in ("segment_label", "segmentation"))
-		print("Loaded", len(data), "keys from file:", f)
-		print("   keys =", [(k, type(data[k])) for k in data])
-		yield data
-
-if __name__ == "__main__":
-
-	args = ParseArgs()
-
-	hists = {}
-	for data in Load(args.input_file):
-		HistSSPerformance(data, hists)
-
-	PlotHists(hists, args.output_dir)
+	plotting_helpers.savefig(plt, "ss_migration", outdir, fmts)
