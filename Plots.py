@@ -51,16 +51,16 @@ def ParseArgs():
 
 	plots_args = parser.add_argument_group("plots", "Which plots to make")
 	for module, description in KNOWN_PLOT_MODULES.items():
-		plots_args.add_argument("--disable_" + module, "Don't make plots regarding " + description, default=False)
+		plots_args.add_argument("--disable_" + module, help="Don't make plots regarding " + description, default=False)
 
-	parser.add_argument("--pixel_coords", "Use pixel units for spatial coordinates rather than real detector geometry coordinates", default=False)
+	parser.add_argument("--pixel_coords", help="Use pixel units for spatial coordinates rather than real detector geometry coordinates", default=False)
 
 	args = parser.parse_args()
 
 	# needs special treatment.
 	# ('append' action doesn't work well with 'default' keyword---it *adds* to the default.
 	#  so we set no default above, and if it comes back empty, we add the default here)
-	if len(args.img_format) == 0:
+	if args.img_format is None:
 		args.img_format = ["pdf", "png"]
 
 	return args
