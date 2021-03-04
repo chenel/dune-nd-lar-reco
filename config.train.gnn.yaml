@@ -274,7 +274,10 @@ model:
 trainval:
   seed: 123
   # these are internally-produced
-  concat_result: ['embeddings', 'seediness', 'margins', 'clust_fragments', 'fragments','frag_edge_index','frag_edge_pred','frag_node_pred','frag_group_pred','particles','inter_edge_index','inter_edge_pred']
+  concat_result: ['embeddings', 'seediness', 'margins',
+                  'clust_fragments', 'fragments', 'frag_edge_index', 'frag_edge_pred', 'frag_node_pred', 'frag_group_pred',
+                  'track_fragments', 'track_node_pred', 'track_edge_pred', 'track_edge_index', 'track_group_pred',
+                  'particles', 'inter_edge_index', 'inter_edge_pred']
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: snapshot
