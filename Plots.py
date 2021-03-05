@@ -67,6 +67,8 @@ def ParseArgs():
 
 
 def Load(filenames, pixel_coords=False):
+	import plotting_helpers
+
 	for f in filenames:
 		with open(f, "rb"):
 			datafile = numpy.load(f, allow_pickle=True)
@@ -74,6 +76,9 @@ def Load(filenames, pixel_coords=False):
 			# these are usually dicts, so the actual type needs to be reconstructed
 			data = {}
 			for k in datafile:
+				if k not in plotting_helpers.REQUIRED_VARS:
+					continue
+
 				print("Loading key:", k, type(datafile[k]))
 				try:
 					data[k] = datafile[k].item()

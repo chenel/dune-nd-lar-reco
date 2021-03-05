@@ -7,6 +7,8 @@ from larcv import larcv
 LABELS_TO_IGNORE = ("Ghost", "Unknown")
 SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
 
+# this will be updated by req_vars_hist() below
+REQUIRED_VARS = set()
 
 class Hist(object):
 	def __init__(self, dim=1, norm=None, bins=None, data=None):
@@ -18,11 +20,16 @@ class Hist(object):
 
 
 def req_vars_hist(var_names):
+	global REQUIRED_VARS
+	REQUIRED_VARS |= var_names
+
 	def decorator(fn):
-		def _inner(fn, data, hists):
-			vars_missing = [v not in data for v in var_names]
+		def _inner(data, hists):
+			vars_missing = [v for v in var_names if v not in data]
 			if len(vars_missing) > 0:
-				print("Warning: var(s)", vars_missing, "missing from products. skipping plots from function:", fn)
+				print("Warning: var(s)", vars_missing, "missing from products.)")
+				print("Known products:", data.keys())
+				print("Skipping plots from function:", fn)
 				return
 
 			return fn(data, hists)
