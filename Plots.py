@@ -9,7 +9,8 @@ import argparse
 import importlib
 import itertools
 import numpy
-import os.path
+import os, os.path
+import sys
 
 KNOWN_PLOT_MODULES = {
 	"ss": "Semantic segmentation",
@@ -23,9 +24,6 @@ ALLOWED_OUTPUT_FORMATS = [
 	"png",
 	"pdf"
 ]
-
-for module in KNOWN_PLOT_MODULES:
-	importlib.import_module(module + "_plotting")
 
 def convert_to_geom_coords(values, metadata, evnums=()):
 	# for coord in ("x", "y", "z"):
@@ -46,12 +44,15 @@ def ParseArgs():
 	                    help=".npz format file(s) containing reconstructed events.")
 	parser.add_argument("--output_dir", "-o", required=True,
 	                    help="Target directory to write output plots.")
+	parser.add_argument("--overwrite", action="store_true", default=False,
+	                    help="Overwrite output directory.")
 	parser.add_argument("--img_format", "-f", action="append", choices=["eps", "png", "pdf"],
 	                    help="Image format(s) to write output in.  Pass as many as desired.  Default uses 'png' and 'pdf'.")
 
 	plots_args = parser.add_argument_group("plots", "Which plots to make")
 	for module, description in KNOWN_PLOT_MODULES.items():
-		plots_args.add_argument("--disable_" + module, help="Don't make plots regarding " + description, default=False)
+		plots_args.add_argument("--disable_" + module,action="store_true", default=False,
+		                        help="Don't make plots regarding " + description)
 
 	parser.add_argument("--pixel_coords", help="Use pixel units for spatial coordinates rather than real detector geometry coordinates", default=False)
 
@@ -97,14 +98,23 @@ def Load(filenames, pixel_coords=False):
 if __name__ == "__main__":
 
 	args = ParseArgs()
-	modules = [ m for m in KNOWN_PLOT_MODULES if not getattr(args, "disable_" + m) ]
+
+	if not os.path.isdir(args.output_dir):
+		print("WARNING: output dir '%s' does not exist.  Attempting to create it..." % args.output_dir)
+		os.mkdir(args.output_dir)
+	elif not args.overwrite and len(os.listdir(args.output_dir)) > 0:
+		print("ERROR: Output dir '%s' is not empty.  (Pass --overwrite if you want to overwrite it." % args.output_dir)
+		sys.exit(1)
+
+	modules = { m: importlib.import_module(m + "_plotting")
+	            for m in KNOWN_PLOT_MODULES if not getattr(args, "disable_" + m) }
 
 	hists = {}
 	for data in Load(args.input_file, args.pixel_coords):
-		for m in modules:
-			hists[m] = {}
-			getattr(m, "BuildHists")(data, hists[m])
+		for mod_name, module in modules.items():
+			hists[mod_name] = {}
+			getattr(module, "BuildHists")(data, hists[mod_name])
 
-	for m in modules:
-		os.path.mkdir(os.path.join(args.output_dir, m))
-		getattr(m, "PlotHists")(hists[m], args.output_dir, args.img_format)
+	for mod_name, module in modules.items():
+		os.makedirs(os.path.join(args.output_dir, mod_name), exist_ok=True)
+		getattr(module, "PlotHists")(hists[mod_name], args.output_dir, args.img_format)
