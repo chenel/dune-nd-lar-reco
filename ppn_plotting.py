@@ -4,5 +4,5 @@ def BuildHists(data, hists):
 	pass
 
 
-def PlotHists(hists, outdir):
+def PlotHists(hists, outdir, fmts):
 	pass
