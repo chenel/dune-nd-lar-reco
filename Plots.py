@@ -25,16 +25,28 @@ ALLOWED_OUTPUT_FORMATS = [
 	"pdf"
 ]
 
+# variables that should be coordinated to geometric coordinates
+GEOM_COORD_VARS = [
+	"input_data",
+	"segment_label",
+	"ppn_post",
+	"particles_label"
+]
+
+
 def convert_to_geom_coords(values, metadata, evnums=()):
 	# for coord in ("x", "y", "z"):
 	#     print("min", coord, "=", getattr(metadata, "min_%s" % coord)())
 	#     print ("voxel size", coord, "=",  getattr(metadata, "size_voxel_%s" % coord)())
 	if len(evnums) > 0:
 		values = itertools.compress(values, (i in evnums for i in range(len(values)) ))
-	for ev in values:
-		ev[:, 0] = ev[:, 0] * metadata.size_voxel_x() + metadata.min_x()
-		ev[:, 1] = ev[:, 1] * metadata.size_voxel_y() + metadata.min_y()
-		ev[:, 2] = ev[:, 2] * metadata.size_voxel_z() + metadata.min_z()
+	for var, vals in values.items():
+		if var not in GEOM_COORD_VARS:
+			continue
+		for ev in vals:
+			ev[:, 0] = ev[:, 0] * metadata.size_voxel_x() + metadata.min_x()
+			ev[:, 1] = ev[:, 1] * metadata.size_voxel_y() + metadata.min_y()
+			ev[:, 2] = ev[:, 2] * metadata.size_voxel_z() + metadata.min_z()
 
 
 def ParseArgs():
