@@ -128,5 +128,6 @@ if __name__ == "__main__":
 			getattr(module, "BuildHists")(data, hists[mod_name])
 
 	for mod_name, module in modules.items():
-		os.makedirs(os.path.join(args.output_dir, mod_name), exist_ok=True)
-		getattr(module, "PlotHists")(hists[mod_name], args.output_dir, args.img_format)
+		outdir = os.path.join(args.output_dir, mod_name)
+		os.makedirs(outdir, exist_ok=True)
+		getattr(module, "PlotHists")(hists[mod_name], outdir, args.img_format)
