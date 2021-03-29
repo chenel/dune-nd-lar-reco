@@ -1,6 +1,7 @@
 import itertools
 import numpy
 import os.path
+from matplotlib import pyplot as plt
 
 from larcv import larcv
 
@@ -10,7 +11,8 @@ SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.st
 # this will be updated by req_vars_hist() below
 REQUIRED_VARS = set()
 
-class Hist(object):
+
+class Hist:
 	def __init__(self, dim=1, norm=None, bins=None, data=None):
 		self.dim = dim
 		self.norm = norm
@@ -21,7 +23,7 @@ class Hist(object):
 
 def req_vars_hist(var_names):
 	global REQUIRED_VARS
-	REQUIRED_VARS |= var_names
+	REQUIRED_VARS.update(var_names)
 
 	def decorator(fn):
 		def _inner(data, hists):
@@ -63,6 +65,21 @@ def hist_aggregate(hist_name, **hist_args):
 		return _inner
 
 	return decorator
+
+
+def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={}):
+	fig, ax = plt.subplots()
+	for hname, h in hists.items():
+		ax.step(x=h.bins[:-1], y=h.data, where="post", label=hist_labels[hname] if hname in hist_labels else None)
+	#			ax.bar(h.bins[:-1], h.data, width=numpy.diff(h.bins), fill=False, label="True" if "true" in hname else "Reco")
+	for axname in ("x", "y"):
+		axlabel = locals()[axname + "axis_label"]
+		if axlabel:
+			getattr(ax, "set_%slabel" % axname)(axlabel)
+	if len(hist_labels) > 0:
+		ax.legend()
+
+	return fig, ax
 
 
 def savefig(fig, name_stub, outdir, fmts):
