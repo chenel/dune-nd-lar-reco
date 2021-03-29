@@ -115,6 +115,8 @@ def LoadConfig(filename, input_files, use_gpu=True, **kwargs):
 def ConfigInference(cfg, model_file):
 	cfg["trainval"]["model_path"] = model_file
 
+	assert os.path.isfile(os.path.expandvars(model_file)), "Invalid model file path provided: " + model_file
+
 
 def ConfigTrain(cfg, output_dir, random_seed=None, num_iterations=None, checkpoint_freq=None, debug=False):
 	cfg["trainval"]["log_dir"] = output_dir
