@@ -29,8 +29,8 @@ def PPNPostProcessing(data, output):
 		return []
 
 	ppn = [None, ] * len(data["input_data"])
-	for entry in range(len(data["input_data"])):
-		ppn[entry] = uresnet_ppn_type_point_selector(data['input_data'][entry],
+	for entry, input_data in enumerate(data["input_data"]):
+		ppn[entry] = uresnet_ppn_type_point_selector(input_data,
 		                                             output,
 		                                             entry=entry,
 		                                             score_threshold=0.5,
@@ -56,6 +56,8 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 	output = {}
 	evt_counter = 0
 	n_evts = len(handlers.data_io) * cfg["iotool"]["batch_size"]
+	if max_events > 0 and n_evts > max_events:
+		n_evts = (max_events // cfg["iotool"]["batch_size"]) * cfg["iotool"]["batch_size"]
 
 	# the handlers.data_io_iter is an endless cycler.  we want to stop when we've made it through the dataset once
 	def cycle(data_io):
@@ -64,12 +66,16 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 
 	it = iter(cycle(handlers.data_io))
 	while True:
+		d = {key: []}
+		o = {}
 		try:
 			d, o = handlers.trainer.forward(it)
 		except StopIteration:
 			break
 		finally:
-			evt_counter += len(d[key])
+			lengths = set(sorted(len(d[k]) for k in d))
+#			assert len(lengths) == 1, "key lengths not all the same: " + str({k: len(v) for k, v in d.items()})
+			evt_counter += lengths.pop()
 			print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
 			sys.stdout.flush()
 
@@ -83,7 +89,7 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 					all_batches[k] = []
 				all_batches[k] += this_batch[k]
 
-		if max_events is not None and evt_counter > max_events:
+		if max_events is not None and evt_counter >= max_events:
 			break
 
 	PPNPostProcessing(data, output)
