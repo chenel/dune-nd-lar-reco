@@ -18,7 +18,7 @@ if __name__ == "__main__":
 	                              model_file=args.model_file,
 	                              use_gpu=args.use_gpu)
 
-	data = load_helpers.ProcessData(cfg)
+	data = load_helpers.ProcessData(cfg, max_events=args.max_events)
 
 	with open(args.output_file, "wb") as outf:
 		numpy.savez(outf, **data)
