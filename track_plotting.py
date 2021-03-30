@@ -8,7 +8,7 @@ import plotting_helpers
 
 TRACK_LABEL = 1
 
-TRACK_THRESHOLD = 5   # voxels.  will be converted to geometry units below
+TRACK_THRESHOLD = 5.0 # cm
 
 
 def convert_pixel_to_geom(val, metadata):
@@ -33,7 +33,7 @@ def reco_track_lengths_cm(vals):
 
 
 def truth_track_lengths_cm(vals):
-	""" return the lengths of all true tracks in units of voxels """
+	""" return the lengths of all true particles with 'track' semantic type in units of cm """
 	if "true_track_lengths" in vals:
 		lengths = vals["true_track_lengths"]
 	else:
@@ -92,7 +92,7 @@ def matched_track_indices(vals, proj_overlap_frac_cut=0.95):
 @plotting_helpers.hist_aggregate("n-tracks-reco", bins=15, range=(0,15))
 def agg_ntracks_reco(vals):
 	lengths = reco_track_lengths_cm(vals)
-	length_mask = lengths > convert_pixel_to_geom(TRACK_THRESHOLD, vals["metadata"])
+	length_mask = lengths > TRACK_THRESHOLD
 	return [numpy.count_nonzero(length_mask),]
 
 
@@ -100,7 +100,7 @@ def agg_ntracks_reco(vals):
 def agg_ntracks_true(vals):
 	# here the track threshold is used in voxels because that's what the internal representation of the particles is
 	lengths = truth_track_lengths_cm(vals)
-	return numpy.count_nonzero(lengths > convert_pixel_to_geom(TRACK_THRESHOLD, vals["metadata"]))
+	return numpy.count_nonzero(lengths > TRACK_THRESHOLD)
 
 
 @plotting_helpers.hist_aggregate("trk-length-true", bins=numpy.logspace(-1, numpy.log10(3000), 50))
@@ -153,7 +153,7 @@ def PlotHists(hists, outdir, fmts):
 	ntracks_hists = {hname: hists[hname] for hname in ("n-tracks-reco", "n-tracks-true")}
 	if all(ntracks_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(ntracks_hists,
-		                                         xaxis_label="'Track' cluster multiplicity (length > %d voxels)" % TRACK_THRESHOLD,
+		                                         xaxis_label="'Track' cluster multiplicity (length > %.1f cm)" % TRACK_THRESHOLD,
 		                                         hist_labels={"n-tracks-reco": "Reco", "n-tracks-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-tracks", outdir, fmts)
