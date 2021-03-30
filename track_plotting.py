@@ -181,7 +181,7 @@ def BuildHists(data, hists):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (agg_trklen_reco, agg_trklen_true, agg_ntracks_reco, agg_ntracks_true,
-		               agg_dtrklen_vs_trklen):
+		               agg_dtrklen_vs_trklen, agg_trklen_truepid):
 			agg_fn(evt_data, hists)
 
 
@@ -224,3 +224,12 @@ def PlotHists(hists, outdir, fmts):
 		ax.axhline(0, color='black', linestyle=':')
 
 		plotting_helpers.savefig(fig, "dlongesttrklen-vs-true", outdir, fmts)
+
+	trklen_by_pid_hists = {hname: hists[hname] for hname in hists if hname.startswith("trk-length-truepid_pdg=")}
+	if len(trklen_by_pid_hists):
+		fig, ax = plotting_helpers.overlay_hists(trklen_by_pid_hists,
+		                                         xaxis_label="True particle trajectory length (cm)",
+		                                         yaxis_label="Particles",
+		                                         hist_labels={hname: "PDG = " + hname.split("=")[1] for hname in trklen_by_pid_hists})
+		ax.set_xscale("log")
+		plotting_helpers.savefig(fig, "trk-length-truepid", outdir, fmts)
