@@ -45,6 +45,46 @@ def truth_track_lengths_cm(vals):
 	return lengths
 
 
+def matched_track_indices(vals, proj_overlap_frac_cut=0.95):
+	""" true - reco track length """
+	# idea: for each (true, reco) pair,
+    #       compute cos(opening angle between them),
+    #       multiply it by the ratio of their lengths,
+    #       and normalize it by a Gaussian function
+	#       of the larger of the distances between each pair of endpoints.
+	# this value, which we'll call projective overlap fraction,
+	# will result in 1 if they are precisely collinear,
+	# and smaller numbers as they differ in angle or length or are far apart.
+	# return a list of (true, reco) index pairs for which
+	# the projective overlap fraction is > than a cut value.
+
+	truth_start = []
+	truth_end = []
+	for p in vals["particles"]:
+		if p.shape() != TRACK_LABEL:
+			continue
+
+		truth_start.append(p.position().as_point3d())
+		truth_end.append(p.end_position().as_point3d())
+	truth_vec = truth_end - truth_start
+	truth_norm = numpy.sqrt(truth_vec.dot(truth_vec))
+
+	reco_start = []
+	reco_end = []
+	for i, trk_index in enumerate(track_indices):
+		voxel_indices = numpy.concatenate([frag for idx, frag in enumerate(vals["track_fragments"]) if vals["track_group_pred"][idx] == trk_index])
+		voxels = vals["input_data"][voxel_indices][:, :3]
+		start, stop = numpy.argmax(scipy.spatial.distance.cdist(voxels, voxels))
+		reco_start.append(start)
+		reco_end.append(stop)
+	reco_vec = reco_end - reco_start
+	reco_norm = numpy.sqrt(reco_vec.dot(reco_vec))
+
+	# dot them together
+	dot = (truth_vec * reco_vec)
+
+	return []
+
 
 #------------------------------------------------------
 
