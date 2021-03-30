@@ -155,6 +155,23 @@ def agg_dtrklen_vs_trklen(vals):
 	return [[longest_true,], [(longest_true - longest_reco) / longest_true,]]
 
 
+@plotting_helpers.hist_aggregate("delta-longest-trk-vs-length",
+                                 hist_dim=2,
+                                 bins=(numpy.logspace(0, numpy.log10(3000), 50),
+                                       numpy.linspace(-1, 1, 50)))
+def agg_dtrklen_vs_trklen(vals):
+	truth_lengths = truth_track_lengths_cm(vals)
+	longest_true = numpy.max(truth_lengths) if len(truth_lengths) > 0 else None
+	reco_lengths = reco_track_lengths_cm(vals)
+	longest_reco = numpy.max(reco_lengths) if len(reco_lengths) > 0 else None
+	#
+	# print(longest_true)
+
+	if not longest_true or not longest_reco:
+		return []
+
+	return [[longest_true,], [(longest_true - longest_reco) / longest_true,]]
+
 
 #------------------------------------------------------
 
