@@ -44,6 +44,18 @@ def truth_track_lengths_cm(vals):
 
 	return lengths
 
+def truth_track_pids(vals):
+	""" return the pids corresponding to all true particles with 'track' semantic type """
+	key = "true_track_pids"
+
+	if key in vals:
+		pids = vals[key]
+	else:
+		pids = numpy.array([p.pdg_code() for p in vals["particles"] if p.shape() == TRACK_LABEL])
+		vals[key] = pids
+
+	return pids
+
 
 def matched_track_indices(vals, proj_overlap_frac_cut=0.95):
 	""" true - reco track length """
@@ -111,6 +123,18 @@ def agg_trklen_true(vals):
 @plotting_helpers.hist_aggregate("trk-length-reco", bins=numpy.logspace(-1, numpy.log10(3000), 50))
 def agg_trklen_reco(vals):
 	return reco_track_lengths_cm(vals)
+
+
+@plotting_helpers.hist_aggregate("trk-length-truepid", bins=numpy.logspace(0, numpy.log10(3000), 50))
+def agg_trklen_truepid(vals):
+	lengths = truth_track_lengths_cm(vals)
+	pids = abs(truth_track_pids(vals))
+
+	ret = {}
+	for pid in numpy.unique(pids):
+		ret["pdg=%s" % pid] = lengths[pids == pid]
+
+	return ret
 
 
 @plotting_helpers.hist_aggregate("delta-longest-trk-vs-length",
