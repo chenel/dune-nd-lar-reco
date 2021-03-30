@@ -56,7 +56,7 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 	output = {}
 	evt_counter = 0
 	n_evts = len(handlers.data_io) * cfg["iotool"]["batch_size"]
-	if max_events > 0 and n_evts > max_events:
+	if max_events and 0 < max_events < n_evts:
 		n_evts = (max_events // cfg["iotool"]["batch_size"]) * cfg["iotool"]["batch_size"]
 
 	# the handlers.data_io_iter is an endless cycler.  we want to stop when we've made it through the dataset once
