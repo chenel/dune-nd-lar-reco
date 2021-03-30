@@ -54,26 +54,36 @@ def hist_aggregate(hist_name, hist_dim=1, **hist_args):
 	def decorator(fn):
 		def _inner(vals, hist_collection):
 			vals = fn(vals)
-			if hist_dim == 1:
-				hist, bins = numpy.histogram(vals, **hist_args)
-			elif hist_dim == 2:
-				if len(vals) == 0:
-					return
-				hist, binsx, binsy = numpy.histogram2d(*vals, **hist_args)
-				bins = (binsx, binsy)
-			else:
-				raise ValueError("Unsupported histogram dimension: " + str(hist_dim))
 
-			if hist_name in hist_collection:
-				h = hist_collection[hist_name]
-				if h.dim == 1:
-					assert all(h.bins == bins)
-				elif h.dim == 2:
-					assert all([numpy.array_equal(h.bins[i], bins[i]) for i in range(len(h.bins))])
-				hist_collection[hist_name].data += hist
-			else:
-				h = Hist(dim=hist_dim, bins=bins, data=hist)
-				hist_collection[hist_name] = h
+			# we want to be able to handle dicts
+			# for the case where multiple instances of the "same" hist
+			# separated by a selection (the dict key) are returned.
+			# if that *isn't* what happened, turn it into a dict with a single key.
+			if not isinstance(vals, dict):
+				vals = {None: vals}
+
+			for subsample, vs in vals.items():
+				full_hist_name = "%s_%s" % (hist_name, subsample) if subsample else hist_name
+				if hist_dim == 1:
+					hist, bins = numpy.histogram(vs, **hist_args)
+				elif hist_dim == 2:
+					if len(vs) == 0:
+						return
+					hist, binsx, binsy = numpy.histogram2d(*vs, **hist_args)
+					bins = (binsx, binsy)
+				else:
+					raise ValueError("Unsupported histogram dimension: " + str(hist_dim))
+
+				if full_hist_name in hist_collection:
+					h = hist_collection[full_hist_name]
+					if h.dim == 1:
+						assert all(h.bins == bins)
+					elif h.dim == 2:
+						assert all([numpy.array_equal(h.bins[i], bins[i]) for i in range(len(h.bins))])
+					hist_collection[full_hist_name].data += hist
+				else:
+					h = Hist(dim=hist_dim, bins=bins, data=hist)
+					hist_collection[full_hist_name] = h
 
 		return _inner
 
