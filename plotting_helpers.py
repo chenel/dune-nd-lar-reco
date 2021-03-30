@@ -39,27 +39,40 @@ def req_vars_hist(var_names):
 	return decorator
 
 
-def hist_aggregate(hist_name, **hist_args):
+def hist_aggregate(hist_name, hist_dim=1, **hist_args):
 	"""
 	Decorator to manage creating/updating a NumPy histogram inside a collection.
 
 	Pass it a function that accepts a single argument (incoming data)
-	and returns an array of values to be histogrammed.
+	and returns an array of values to be histogrammed (if 1D histogram)
+	or two arrays of values to be histogrammed (if 2D).
+
+	By default creates 1D histogram.  If 2D is desired pass hist_dim=2.
 
 	Arguments to numpy.histogram() (e.g., 'bins', 'range') may be specified as keyword arguments.
 	"""
 	def decorator(fn):
 		def _inner(vals, hist_collection):
 			vals = fn(vals)
-			hist, bins = numpy.histogram(vals, **hist_args)
+			if hist_dim == 1:
+				hist, bins = numpy.histogram(vals, **hist_args)
+			elif hist_dim == 2:
+				if len(vals) == 0:
+					return
+				hist, binsx, binsy = numpy.histogram2d(*vals, **hist_args)
+				bins = (binsx, binsy)
+			else:
+				raise ValueError("Unsupported histogram dimension: " + str(hist_dim))
 
 			if hist_name in hist_collection:
-				assert all(hist_collection[hist_name].bins == bins)
+				h = hist_collection[hist_name]
+				if h.dim == 1:
+					assert all(h.bins == bins)
+				elif h.dim == 2:
+					assert all([numpy.array_equal(h.bins[i], bins[i]) for i in range(len(h.bins))])
 				hist_collection[hist_name].data += hist
 			else:
-				h = Hist()
-				h.bins = bins
-				h.data = hist
+				h = Hist(dim=hist_dim, bins=bins, data=hist)
 				hist_collection[hist_name] = h
 
 		return _inner
