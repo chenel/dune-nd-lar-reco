@@ -31,12 +31,12 @@ def reco_track_lengths_cm(vals):
 	return lengths
 
 
-def truth_track_lengths_vox(vals):
+def truth_track_lengths_cm(vals):
 	""" return the lengths of all true tracks in units of voxels """
 	if "true_track_lengths" in vals:
 		lengths = vals["true_track_lengths"]
 	else:
-		lengths = numpy.array([p.end_position().as_point3d().distance(p.position().as_point3d())
+		lengths = numpy.array([p.first_step().as_point3d().distance(p.last_step().as_point3d())
 		                       for p in vals["particles"]
 		                       if p.shape() == TRACK_LABEL])
 		vals["true_track_lengths"] = lengths
@@ -56,13 +56,13 @@ def agg_ntracks_reco(vals):
 @plotting_helpers.hist_aggregate("n-tracks-true", bins=15, range=(0,15))
 def agg_ntracks_true(vals):
 	# here the track threshold is used in voxels because that's what the internal representation of the particles is
-	lengths = truth_track_lengths_vox(vals)
-	return numpy.count_nonzero(lengths > TRACK_THRESHOLD)
+	lengths = truth_track_lengths_cm(vals)
+	return numpy.count_nonzero(lengths > convert_pixel_to_geom(TRACK_THRESHOLD, vals["metadata"]))
 
 
 @plotting_helpers.hist_aggregate("trk-length-true", bins=numpy.logspace(-1, numpy.log10(3000), 50))
 def agg_trklen_true(vals):
-	return convert_pixel_to_geom(truth_track_lengths_vox(vals), vals["metadata"])
+	return truth_track_lengths_cm(vals)
 
 
 @plotting_helpers.hist_aggregate("trk-length-reco", bins=numpy.logspace(-1, numpy.log10(3000), 50))
