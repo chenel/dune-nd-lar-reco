@@ -1,5 +1,6 @@
 
 from matplotlib import pyplot as plt
+import matplotlib.colors
 import numpy
 import scipy.spatial
 
@@ -45,6 +46,8 @@ def truth_track_lengths_cm(vals):
 
 
 
+#------------------------------------------------------
+
 
 @plotting_helpers.hist_aggregate("n-tracks-reco", bins=15, range=(0,15))
 def agg_ntracks_reco(vals):
@@ -70,6 +73,25 @@ def agg_trklen_reco(vals):
 	return reco_track_lengths_cm(vals)
 
 
+@plotting_helpers.hist_aggregate("delta-longest-trk-vs-length",
+                                 hist_dim=2,
+                                 bins=(numpy.logspace(0, numpy.log10(3000), 50),
+                                       numpy.linspace(-1, 1, 50)))
+def agg_dtrklen_vs_trklen(vals):
+	truth_lengths = truth_track_lengths_cm(vals)
+	longest_true = numpy.max(truth_lengths) if len(truth_lengths) > 0 else None
+	reco_lengths = reco_track_lengths_cm(vals)
+	longest_reco = numpy.max(reco_lengths) if len(reco_lengths) > 0 else None
+	#
+	# print(longest_true)
+
+	if not longest_true or not longest_reco:
+		return []
+
+	return [[longest_true,], [(longest_true - longest_reco) / longest_true,]]
+
+
+
 #------------------------------------------------------
 
 @plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles", "metadata"])
@@ -77,7 +99,8 @@ def BuildHists(data, hists):
 	for evt_idx in range(len(data["particles"])):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
-		for agg_fn in (agg_trklen_reco, agg_trklen_true, agg_ntracks_reco, agg_ntracks_true):
+		for agg_fn in (agg_trklen_reco, agg_trklen_true, agg_ntracks_reco, agg_ntracks_true,
+		               agg_dtrklen_vs_trklen):
 			agg_fn(evt_data, hists)
 
 
@@ -103,3 +126,20 @@ def PlotHists(hists, outdir, fmts):
 		                                         hist_labels={"trk-length-reco": "Reco", "trk-length-true": "True"})
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "trk-len", outdir, fmts)
+
+	if hists["delta-longest-trk-vs-length"]:
+		h = hists["delta-longest-trk-vs-length"]
+		fig = plt.figure()
+		ax = fig.add_subplot()
+		x, y = numpy.meshgrid(*h.bins)
+		im = ax.pcolormesh(x, y, h.data.T, cmap="Reds", norm=matplotlib.colors.LogNorm())
+		plt.colorbar(im)
+
+		ax.set_xlabel("$L_{true}$ (cm)")
+		ax.set_ylabel("($L_{true} - L_{reco}) / L_{true}$ for longest true, reco tracks")
+		ax.set_xscale("log")
+
+		# line at y=0
+		ax.axhline(0, color='black', linestyle=':')
+
+		plotting_helpers.savefig(fig, "dlongesttrklen-vs-true", outdir, fmts)
