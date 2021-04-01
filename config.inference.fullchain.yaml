@@ -98,7 +98,7 @@ model:
       ppn_score_threshold: 0.9
       ppn_type_score_threshold: 0.5
       ppn_type_threshold: 1.999
-      ppn_mask_radius: 5
+      ppn_mask_radius: 10
 
     # Then, once clusters are made then we can make particle candidates out of them:
     # DBScan fragments of "track" hits are taken to be tracks,
