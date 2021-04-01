@@ -73,8 +73,8 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 		except StopIteration:
 			break
 		finally:
-			lengths = set(sorted(len(d[k]) for k in d))
-#			assert len(lengths) == 1, "key lengths not all the same: " + str({k: len(v) for k, v in d.items()})
+			lengths = set(len(d[k]) for k in d)
+			assert len(lengths) == 1, "key lengths not all the same: " + str({k: len(v) for k, v in d.items()})
 			evt_counter += lengths.pop()
 			print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
 			sys.stdout.flush()
