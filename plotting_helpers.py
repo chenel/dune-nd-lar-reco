@@ -90,11 +90,19 @@ def hist_aggregate(hist_name, hist_dim=1, **hist_args):
 	return decorator
 
 
-def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={}):
+def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={}, **kwargs):
 	fig, ax = plt.subplots()
 	for hname, h in hists.items():
-		ax.step(x=h.bins[:-1], y=h.data, where="post", label=hist_labels[hname] if hname in hist_labels else None)
+		this_kwargs = {}
+		for key, val in kwargs.items():
+			if hasattr(val, "__getitem__"):
+				if hname in val:
+					this_kwargs[key] = val[hname]
+			else:
+				this_kwargs[key] = val
+		ax.step(x=h.bins[:-1], y=h.data, where="post", label=hist_labels[hname] if hname in hist_labels else None, **this_kwargs)
 	#			ax.bar(h.bins[:-1], h.data, width=numpy.diff(h.bins), fill=False, label="True" if "true" in hname else "Reco")
+		ax.margins(x=0)  # eliminate the whitespace between the x-axis and the first bin
 	for axname in ("x", "y"):
 		axlabel = locals()[axname + "axis_label"]
 		if axlabel:
