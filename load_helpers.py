@@ -99,13 +99,16 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 	return data
 
 
-def LoadConfig(filename, input_files, use_gpu=True, **kwargs):
+def LoadConfig(filename, input_files, batch_size=None, use_gpu=True, **kwargs):
 	cfg = yaml.load(open(filename))
 
 	if "iotool" in cfg and "dataset" in cfg["iotool"]:
 		cfg["iotool"]["dataset"]["data_keys"] = input_files
 	if "trainval" in cfg:
 		cfg["trainval"]["gpus"] = "0" if use_gpu else ""
+
+	if batch_size:
+		cfg["iotool"]["batch_size"] = batch_size
 
 	if "trainval" in cfg and "train" in cfg["trainval"] and cfg["trainval"]["train"] is True:
 		ConfigTrain(cfg, **kwargs)
