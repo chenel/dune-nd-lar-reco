@@ -10,6 +10,8 @@ TRACK_LABEL = 1
 
 TRACK_THRESHOLD = 5.0 # cm
 
+LONG_TRACK = 100 # cm
+
 
 def convert_pixel_to_geom(val, metadata):
 	# assume cubical, for now...
@@ -110,9 +112,22 @@ def agg_ntracks_reco(vals):
 
 @plotting_helpers.hist_aggregate("n-tracks-true", bins=15, range=(0,15))
 def agg_ntracks_true(vals):
-	# here the track threshold is used in voxels because that's what the internal representation of the particles is
 	lengths = truth_track_lengths_cm(vals)
 	return numpy.count_nonzero(lengths > TRACK_THRESHOLD)
+
+
+@plotting_helpers.hist_aggregate("n-tracks-with-long-track-reco", bins=15, range=(0,15))
+def agg_ntrackslongtrk_reco(vals):
+	lengths = reco_track_lengths_cm(vals)
+	is_longtrk_ev = numpy.count_nonzero(lengths > LONG_TRACK) > 0
+	return [-1 if not is_longtrk_ev else len(lengths),]
+
+
+@plotting_helpers.hist_aggregate("n-tracks-with-long-track-true", bins=15, range=(0,15))
+def agg_ntrackslongtrk_true(vals):
+	lengths = truth_track_lengths_cm(vals)
+	is_longtrk_ev = numpy.count_nonzero(lengths > LONG_TRACK) > 0
+	return [-1 if not is_longtrk_ev else len(lengths),]
 
 
 @plotting_helpers.hist_aggregate("trk-length-true", bins=numpy.logspace(-1, numpy.log10(3000), 50))
@@ -180,7 +195,9 @@ def BuildHists(data, hists):
 	for evt_idx in range(len(data["particles"])):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
-		for agg_fn in (agg_trklen_reco, agg_trklen_true, agg_ntracks_reco, agg_ntracks_true,
+		for agg_fn in (agg_trklen_reco, agg_trklen_true,
+		               agg_ntracks_reco, agg_ntracks_true,
+		               agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
 		               agg_dtrklen_vs_trklen, agg_trklen_truepid):
 			agg_fn(evt_data, hists)
 
@@ -198,6 +215,14 @@ def PlotHists(hists, outdir, fmts):
 		                                         hist_labels={"n-tracks-reco": "Reco", "n-tracks-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-tracks", outdir, fmts)
+
+	ntracks_longtrk_hists = {hname: hists[hname] for hname in ("n-tracks-with-long-track-reco", "n-tracks-with-long-track-true")}
+	if all(ntracks_hists.values()):
+		fig, ax = plotting_helpers.overlay_hists(ntracks_longtrk_hists,
+		                                         xaxis_label="'Track' multiplicity (evts. with length > %.1f cm)" % LONG_TRACK,
+		                                         hist_labels={"n-tracks-with-long-track-reco": "Reco", "n-tracks-with-long-track-true": "True"})
+
+		plotting_helpers.savefig(fig, "n-tracks-longtrkcut", outdir, fmts)
 
 	trklen_hists = {hname: hists[hname] for hname in ("trk-length-reco", "trk-length-true")}
 	if all(trklen_hists.values()):
