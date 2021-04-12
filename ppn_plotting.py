@@ -44,7 +44,7 @@ def PlotHists(hists, outdir, fmts):
 		colors = [c["color"] for c in matplotlib.rcParams["axes.prop_cycle"]]
 		fig, ax = plotting_helpers.overlay_hists(point_type_hists,
 		                                         xaxis_label="POI multiplicity",
-		                                         yaxis_label="Events / unit",
+		                                         yaxis_label="Events",
 		                                         hist_labels={hname: POINT_LABELS[int(hname.split("=")[1])]
 		                                                             + (" (reco)" if hname.startswith("n-ppn-reco") else " (true)")
 		                                                      for hname in point_type_hists},
