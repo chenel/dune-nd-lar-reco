@@ -60,7 +60,6 @@ def summarizer(shape):
 
                 assert ret.shape[1:] == shape, "Summarizer data shape " + str(ret.shape[1:]) + " is different from declared: " + str(shape)
 
-                print("event_base:", input_data["event_base"])
                 event_info = numpy.empty(shape=(len(ret), 3))
                 event_info[:, :3] = input_data["event_base"][0][0]
 
@@ -82,15 +81,13 @@ def summarize_tracks(input_data, reco_output):
     track_indices = numpy.unique(reco_output["track_group_pred"])
     for i, trk_index in enumerate(track_indices):
         voxel_indices = numpy.concatenate([frag for idx, frag in enumerate(reco_output["track_fragments"]) if reco_output["track_group_pred"][idx] == trk_index])
-#        print("voxel indices:", voxel_indices)
         voxels = input_data["input_data"][voxel_indices][:, :3]
 
         # compute distances between all pairs of voxels in this track segment
         # call the ones furthest apart the track's "ends"
         dists = scipy.spatial.distance.cdist(voxels, voxels)
-        maxes = numpy.where(dists == numpy.max(dists))  # symmetric matrix, so always at least two, but may be others if multiple points are exactly same distance
+        maxes = numpy.argwhere(dists == numpy.max(dists))  # symmetric matrix, so always at least two, but may be others if multiple points are exactly same distance
         row, col = maxes[0]
-#        print("row, col:", row, col)
 
         # now collect the two points treated as the endpoints.
         # call the one closer to the most "track" PPN points the "beginning".
