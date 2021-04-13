@@ -27,10 +27,13 @@ def GetHDF5(filename, datasets, max_events=None):
     summary_out = h5py.File(filename, "w")
     for dataset in datasets:
         # add 3 to the 'columns' for (run, subrun, event)
-        shape = (3+summarize.SUMMARIZER_SHAPES[dataset][0], *summarize.SUMMARIZER_SHAPES[dataset][1:])
-        summary_out.create_dataset(dataset,
-                                   shape=(0, *shape),
-                                   maxshape=(None, *shape))
+        shape = (3 + len(summarize.SUMMARIZER_COLUMNS[dataset]),)
+        ds = summary_out.create_dataset(dataset,
+                                        shape=(0, *shape),
+                                        maxshape=(None, *shape))
+
+        ds.attrs["column_names"] = ["Run", "Subrun", "Event"] + summarize.SUMMARIZER_COLUMNS[dataset]
+
 
     return summary_out
 

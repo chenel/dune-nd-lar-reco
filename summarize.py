@@ -14,7 +14,7 @@ import scipy.spatial
 import plotting_helpers
 
 # will be filled in by the decorator as they're declared
-SUMMARIZER_SHAPES = {}
+SUMMARIZER_COLUMNS = {}
 
 TRACK_LABEL = [k for k, v in plotting_helpers.SHAPE_LABELS.items() if "Track" in v][0]
 
@@ -35,19 +35,19 @@ def SummarizerRunner(summarize_fns_names, datasets):
     return _inner
 
 
-def summarizer(shape):
+def summarizer(columns):
     """
     Decorator to register a summarizer function.
     The summarizer function should accept 2 arguments (input data and the reco output-in-progress)
     and it should return a numpy array with shape (N, *summarizer_shape)
 
-    :param shape: The numpy shape of your data, excluding the rows (simplest case: number of columns).
-                  Describe it in a comment!
+    :param columns: Names for the columns of your data that this function will return.
     """
     def decorator(fn):
         assert fn.__name__.startswith("summarize_"), "Summarizer function names must begin with 'summarize_'"
         summarizer_name = fn.__name__[10:]
-        SUMMARIZER_SHAPES[summarizer_name] = shape
+        SUMMARIZER_COLUMNS[summarizer_name] = columns
+        shape = (len(columns),)
 
         def _inner(input_data, reco_output, dataset):
             # each idx corresponds to one event.  not all products may be filled for each event
@@ -74,7 +74,7 @@ def summarizer(shape):
     return decorator
 
 
-@summarizer(shape=(6,))   # 6 columns: [trk_start_x, trk_start_y, trk_start_z, trk_end_x, trk_end_y, trk_end_z]
+@summarizer(columns=["trk_start_x", "trk_start_y", "trk_start_z", "trk_end_x", "trk_end_y", "trk_end_z"])
 def summarize_tracks(input_data, reco_output):
     tracks_out = []
 

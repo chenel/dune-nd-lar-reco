@@ -22,7 +22,7 @@ if __name__ == "__main__":
 	                              use_gpu=args.use_gpu)
 
 	# add some options to customize this list ... eventually
-	summarizers = summarize.SUMMARIZER_SHAPES.keys()
+	summarizers = summarize.SUMMARIZER_COLUMNS.keys()
 	with save_helpers.GetHDF5(args.summary_hdf5, datasets=summarizers) as summary_file:
 		summarizer_fn = None
 		if args.summary_hdf5:
