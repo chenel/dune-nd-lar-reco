@@ -79,6 +79,8 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 			print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
 			sys.stdout.flush()
 
+		PPNPostProcessing(d, o)
+
 		if during is not None:
 			d, o = during(data=d, output=o)
 
@@ -92,7 +94,6 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 		if max_events is not None and evt_counter >= max_events:
 			break
 
-	PPNPostProcessing(data, output)
 
 	data.update(output)
 
@@ -157,7 +158,10 @@ def ParseArgs(run_type):
 		parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
 		                    help="Processed LArCV input file(s) to reconstruct.")
 		parser.add_argument("--output_file", "-o", required=True,
-		                    help="Target file to write output to.")
+		                    help="Target file to write full reco output to.")
+
+		parser.add_argument("--summary_hdf5", "-s", default=None,
+							help="HDF5 file to store summary info (tracks, etc.) in.")
 
 	elif run_type is RunType.TRAIN:
 		parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
