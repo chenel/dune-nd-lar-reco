@@ -1,5 +1,5 @@
 iotool:
-  batch_size: 32
+  batch_size: 1
   shuffle: False
   num_workers: 1
   collate_fn: CollateSparse
@@ -9,10 +9,15 @@ iotool:
   dataset:
     name: LArCVDataset
     limit_num_files: 10
+#    event_list: "[1519, 1520, 1521, 1522, 1523, 1524, 1525]"
     schema:
       # this first item is not needed for inference, but it's used in plots and is helpful to have stored in the files
       metadata:
         - parse_metadata
+        - sparse3d_geant4
+      # next one is used to supply event ID information for use in summarizers
+      event_base:
+        - parse_eventbase
         - sparse3d_geant4
       input_data:
         - parse_sparse3d_scn  # this parser takes one argument: the tree with EventSparseTensor3Ds
@@ -95,7 +100,7 @@ model:
       michel_label: 2  # needs to match larcv::kShapeMichel
       delta_label: 3   # needs to match larcv::kShapeDelta
       track_clustering_method: 'masked_dbscan' # masked_dbscan, closest_path
-      ppn_score_threshold: 0.9
+      ppn_score_threshold: 0.5 # 0.9
       ppn_type_score_threshold: 0.5
       ppn_type_threshold: 1.999
       ppn_mask_radius: 10
@@ -267,7 +272,7 @@ trainval:
   concat_result: ['embeddings', 'seediness', 'margins',
                   'clust_fragments', 'fragments', 'frag_edge_index', 'frag_edge_pred', 'frag_node_pred', 'frag_group_pred',
                   'track_fragments', 'track_node_pred', 'track_edge_pred', 'track_edge_index', 'track_group_pred',
-                  'particles', 'inter_edge_index', 'inter_edge_pred']
+                  'particles', 'inter_edge_index', 'inter_edge_pred', "event_base"]
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: weights/snapshot
@@ -276,5 +281,5 @@ trainval:
   log_dir: log_inference
   train: False
   debug: False
-  minibatch_size: -1
+#  minibatch_size: -1
 

@@ -7,8 +7,11 @@
 """
 
 import numpy
+import h5py
 
 import load_helpers
+import save_helpers
+import summarize
 
 if __name__ == "__main__":
 	args = load_helpers.ParseArgs(load_helpers.RunType.INFERENCE)
@@ -18,7 +21,14 @@ if __name__ == "__main__":
 	                              model_file=args.model_file,
 	                              use_gpu=args.use_gpu)
 
-	data = load_helpers.ProcessData(cfg, max_events=args.max_events)
+	# add some options to customize this list ... eventually
+	summarizers = summarize.SUMMARIZER_SHAPES.keys()
+	with save_helpers.GetHDF5(args.summary_hdf5, datasets=summarizers) as summary_file:
+		summarizer_fn = None
+		if args.summary_hdf5:
+			summarizer_fn = summarize.SummarizerRunner(summarizers, datasets={ds: summary_file[ds] for ds in summarizers})
+
+		data = load_helpers.ProcessData(cfg, max_events=args.max_events, during=summarizer_fn)
 
 	with open(args.output_file, "wb") as outf:
 		numpy.savez(outf, **data)
