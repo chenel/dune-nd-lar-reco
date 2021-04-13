@@ -25,29 +25,6 @@ ALLOWED_OUTPUT_FORMATS = [
 	"pdf"
 ]
 
-# variables that should be coordinated to geometric coordinates
-GEOM_COORD_VARS = [
-	"input_data",
-	"segment_label",
-	"ppn_post",
-	"particles_label"
-]
-
-
-def convert_to_geom_coords(values, metadata, evnums=()):
-	# for coord in ("x", "y", "z"):
-	#     print("min", coord, "=", getattr(metadata, "min_%s" % coord)())
-	#     print ("voxel size", coord, "=",  getattr(metadata, "size_voxel_%s" % coord)())
-	if len(evnums) > 0:
-		values = itertools.compress(values, (i in evnums for i in range(len(values)) ))
-	for var, vals in values.items():
-		if var not in GEOM_COORD_VARS:
-			continue
-		for ev in vals:
-			ev[:, 0] = ev[:, 0] * metadata.size_voxel_x() + metadata.min_x()
-			ev[:, 1] = ev[:, 1] * metadata.size_voxel_y() + metadata.min_y()
-			ev[:, 2] = ev[:, 2] * metadata.size_voxel_z() + metadata.min_z()
-
 
 def ParseArgs():
 	parser = argparse.ArgumentParser()
@@ -66,8 +43,6 @@ def ParseArgs():
 		plots_args.add_argument("--disable_" + module,action="store_true", default=False,
 		                        help="Don't make plots regarding " + description)
 
-	parser.add_argument("--pixel_coords", help="Use pixel units for spatial coordinates rather than real detector geometry coordinates", default=False)
-
 	args = parser.parse_args()
 
 	# needs special treatment.
@@ -79,7 +54,7 @@ def ParseArgs():
 	return args
 
 
-def Load(filenames, pixel_coords=False):
+def Load(filenames):
 	import plotting_helpers
 
 	for f in filenames:
@@ -97,10 +72,6 @@ def Load(filenames, pixel_coords=False):
 					data[k] = datafile[k].item()
 				except:
 					data[k] = datafile[k]
-
-			if not pixel_coords:
-				if "metadata" in data:
-					convert_to_geom_coords(data, data["metadata"][0])
 
 		print("Loaded", len(data), "keys from file:", f)
 		print("   keys =", [(k, type(data[k])) for k in data])
@@ -122,7 +93,7 @@ if __name__ == "__main__":
 	            for m in KNOWN_PLOT_MODULES if not getattr(args, "disable_" + m) }
 
 	hists = {}
-	for data in Load(args.input_file, args.pixel_coords):
+	for data in Load(args.input_file):
 		for mod_name, module in modules.items():
 			hists[mod_name] = {}
 			getattr(module, "BuildHists")(data, hists[mod_name])

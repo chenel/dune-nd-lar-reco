@@ -7,11 +7,11 @@
 """
 
 import numpy
-import h5py
 
 import load_helpers
 import save_helpers
 import summarize
+
 
 if __name__ == "__main__":
 	args = load_helpers.ParseArgs(load_helpers.RunType.INFERENCE)
