@@ -72,7 +72,7 @@ def summarizer(columns):
                 out = numpy.column_stack((event_info, ret))
 
                 # add more rows as needed
-                if isinstance(dataset, h5py.File):
+                if isinstance(dataset, h5py.Dataset):
                     old_size = len(dataset)
                     dataset.resize(old_size + len(out), axis=0)
                     dataset[old_size:old_size + len(out), :] = out
