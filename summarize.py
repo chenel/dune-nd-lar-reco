@@ -181,4 +181,11 @@ def summarize_tracks(input_data, reco_output):
         dir_vec = track_end_dir(voxels, dists[endpoint2_idx if start_idx == 0 else endpoint1_idx], endpoints)
         tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], dir_vec]))
 
-    return numpy.row_stack(tracks_out) if len(tracks_out) > 0 else []
+    ret = []
+    if len(tracks_out):
+        # reorder the 'ret' array by length in descending order (longest first)
+        ret = numpy.row_stack(tracks_out)
+        lengths = numpy.linalg.norm(ret[:, 6:9] - ret[:, 3:6], axis=1)
+        ret = ret[lengths.argsort()[::-1]]  # from https://stackoverflow.com/a/9008147
+
+    return ret
