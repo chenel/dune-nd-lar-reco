@@ -84,55 +84,53 @@ def summarizer(columns):
 
 
 def track_end_dir(voxels, dists_to_end, endpoints):
+    """
+     Determine outgoing track direction vector for a group of voxels corresponding to a track.
+    :param voxels:       array of array of (x,y,z) points corresponding to positions of voxels within the track group
+    :param dists_to_end: NxN 2d array of distances between the voxels.  usually calculated with cdist from the "voxels" array
+    :param endpoints:    length-6 array corresponding to the 3D points of the (start, end) track voxels in that order
+    :return:
+    """
+
+    # first work out the set of voxels close to the track endpoint.
     end = endpoints[1]
-    print("start voxel:", endpoints[0])
-    print("end voxel:", end)
     v = end - endpoints[0]  # compute displacement vector from start to end
     v_norm = numpy.linalg.norm(v, axis=0)
-    print("distance between them:", v_norm)
     v /= v_norm
-    # with numpy.printoptions(threshold=numpy.inf):
-    #     print("dists_to_end:", dists_to_end)
     if v_norm > ENDPOINT_DISTANCE:
-        # print("indices of voxels close to end:", numpy.nonzero(dists_to_end < ENDPOINT_DISTANCE))
         voxidxs_close_to_end = numpy.nonzero((0 < dists_to_end) & (dists_to_end < ENDPOINT_DISTANCE))[0]  # find all voxels in the group within fixed distance of the endpoint
     else:
         voxidxs_close_to_end = numpy.nonzero((0 < dists_to_end))[0]
-    print("voxels_close_to_end:", voxels[voxidxs_close_to_end])
+
+    # compute the displacement vectors of those "close-to-end" voxels relative to the endpoint
     vox_displ_to_end = -(voxels[voxidxs_close_to_end] - end)  # subtract the endpoint from all the candidate voxels to get displacements
-    print("vox displ vectors:", vox_displ_to_end.shape, vox_displ_to_end)
     norms = numpy.linalg.norm(vox_displ_to_end, axis=1)
-    print("displ vec lengths:", norms.shape, norms)
     vox_displ_to_end = vox_displ_to_end / norms[..., None]  # and normalize those too
-    print("vox_displ_to_end:", vox_displ_to_end)
+
+    # compute the opening angles of those displacement vectors
+    # relative to the one from start to end of the track.
+    # retain only those whose displ vec is within a given opening angle
+    # relative to the (end-start) vector.
     cos_open_angles = numpy.sum(vox_displ_to_end * v, axis=1)  # take dot product to determine cos(opening angles)
-    print("cos_open_angles:", cos_open_angles)
-    # print("cos_open_angles >= 0:", 0 <= cos_open_angles)
-    #        print("selected indices:", type(numpy.nonzero((0 <= cos_open_angles) & (cos_open_angles <= COS_OPEN_ANGLE))[0]))
-    # print("types:", type(voxels), type(voxidxs_close_to_end))
     end_voxels = voxels[voxidxs_close_to_end[
         numpy.nonzero((0 <= cos_open_angles) & (cos_open_angles >= MIN_COS_OPEN_ANGLE))[
             0]]]  # keep voxels that are within fixed opening angle
     if len(end_voxels) <= 1:
-        print('warning: track has insuficient endpoint voxels.')
-        print("  --> using (end - start) to determine track dir")
         return v
-    print("end_voxels:", len(end_voxels), end_voxels)
 
+    # now compute the principal axes of those voxels.
+    # keep only the principal axis corresponding to the largest eigenvector
+    # of the covariance matrix.
+    # interpret that as the track-end direction.
     centered = end_voxels - numpy.sum(end_voxels, axis=0) / len(end_voxels)
-    # print("centered:", centered)
     cov = numpy.cov(centered.T)  # covariance of the (recentered) voxel positions
-    # print("cov:", cov)
     lmbda, e = numpy.linalg.eig(cov)  # eigenvalues & eigenvectors of the covariance matrix
-    # print("eigenvalues:", lmbda)
-    # print("eigenvctors:", e)
     max_ev_idx = numpy.argmax(lmbda)
     dir_vec = numpy.sqrt(lmbda[max_ev_idx]) * e[:, max_ev_idx]
 
     if v.dot(dir_vec) < 0:  # if the eigenvector points the wrong way, flip it
         dir_vec *= -1
 
-    print("dir vec:", dir_vec)
     return dir_vec
 
 
@@ -140,6 +138,12 @@ def track_end_dir(voxels, dists_to_end, endpoints):
                      "trk_end_x", "trk_end_y", "trk_end_z",
                      "trk_end_dir_x", "trk_end_dir_y", "trk_end_dir_z"])
 def summarize_tracks(input_data, reco_output):
+    """
+      Summarize track information.
+    :param input_data:   List-of-dicts in mlreco3d-unwrapped format corresponding to parsed input for a single event.
+    :param reco_output:  List-of-dicts in mlreco3d-unwrapped format corresponding to output of reconstruction for the same event.
+    :return: array of track information with columns as shown in decorator.  (also stored in hdf5 annotation.)
+    """
     tracks_out = []
 
     track_indices = numpy.unique(reco_output["track_group_pred"])
@@ -174,12 +178,6 @@ def summarize_tracks(input_data, reco_output):
         endpoints = voxels[(endpoint1_idx, endpoint2_idx) if start_idx == 0 else (endpoint2_idx, endpoint1_idx), :3]
 
         # finally, figure out its direction at the end of the track.
-        # for the moment, just take all the points that are close to the end
-        # and don't deviate from the beginning-end trajectory by too much.
-        print("event info:", input_data["event_base"][0])
-        print("track index:", trk_index)
-        # print("start, end vox indices:", (endpoint1_idx, endpoint2_idx) if start_idx == 0 else (endpoint2_idx, endpoint1_idx))
-#        print("row idx in 'dist' matrix corresponding to distance to endpoint:", numpy.argwhere(voxels == endpoints[1]))
         dir_vec = track_end_dir(voxels, dists[endpoint2_idx if start_idx == 0 else endpoint1_idx], endpoints)
         tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], dir_vec]))
 
