@@ -8,7 +8,7 @@ iotool:
 #    name: SequentialBatchSampler  # use if you want to overtrain on a fixed sample (also set the batch size to the full sample size)
   dataset:
     name: LArCVDataset
-    limit_num_files: 10
+    limit_num_files: 100
     schema:
       input_data:
         - parse_sparse3d_scn  # this parser takes one argument: the tree with EventSparseTensor3Ds
@@ -57,7 +57,7 @@ trainval:
   weight_prefix: snapshot
   iterations: 15000
   report_step: 1
-  checkpoint_step: 100
+  checkpoint_step: 1000
   log_dir: log_train
   train: True
   debug: False
