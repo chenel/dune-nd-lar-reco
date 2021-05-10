@@ -14,6 +14,9 @@ import mlreco.main_funcs
 def LoadConfig(filename, input_files, output_dir, random_seed=None, num_iterations=None, checkpoint_freq=None, debug=False, use_gpu=True):
 	cfg = yaml.load(open(filename))
 
+	if any(x in input_files for x in ('*', '?')):
+		import glob
+		input_files = glob.glob(input_files)
 	cfg["iotool"]["dataset"]["data_keys"] = input_files
 	cfg["trainval"]["log_dir"] = output_dir
 	cfg["trainval"]["weight_prefix"] = os.path.join(output_dir, cfg["trainval"]["weight_prefix"] if "weight_prefix" in cfg["trainval"] else "")

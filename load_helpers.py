@@ -134,6 +134,10 @@ def LoadConfig(filename, input_files, batch_size=None, use_gpu=True, **kwargs):
 		cfg["iotool"]["dataset"]["data_keys"] = input_files
 	if "trainval" in cfg:
 		cfg["trainval"]["gpus"] = "0" if use_gpu else ""
+		cfg["trainval"]["log_dir"] = log_dir
+
+		if checkpoint_freq:
+			cfg["trainval"]["checkpoint_step"] = checkpoint_freq
 
 	if batch_size:
 		cfg["iotool"]["batch_size"] = batch_size
@@ -180,9 +184,13 @@ def ParseArgs(run_type):
 	                    help="YAML base configuration that will be augmented with other arguments.")
 	
 	if run_type is RunType.INFERENCE:
-		parser.add_argument("--model_file", "-m", required=True,
-		                    help="Path to Torch stored model weights file.")
-		parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
+		# would use 'action="extend"' but that's not available until python 3.8
+		parser.add_argument("--model_files", "-m",
+		                    required=True, action="append", nargs="+",
+		                    help="Path to Torch stored model weights file(s)." + \
+		                         "(If multiple files provided, each will be evaluated sequentially.)")
+		parser.add_argument("--input_file", "-i",
+		                    required=True, action="append", nargs="+", default=[],
 		                    help="Processed LArCV input file(s) to reconstruct.")
 		parser.add_argument("--output_file", "-o", required=True,
 		                    help="Target file to write full reco output to.")
@@ -209,8 +217,22 @@ def ParseArgs(run_type):
 
 	parser.add_argument("-n", "--max_events", type=int,
 	                    help="Maximum number of events to process.")
+	parser.add_argument("-b", "--batch_size", type=int, default=None,
+	                    help="Batch size in training or inference.")
+	parser.add_argument("--log_dir", "-l",
+	                    help="Directory to write mlreco3d log files (including losses) to.")
+	parser.add_argument("--checkpoint_freq", type=int, default=None,
+	                    help="How frequently (iterations) to write to the log file.")
 
 	parser.add_argument("--use_gpu", action="store_true", default=True,
 	                    help="Use GPU.  Default: %(default)s")
 
-	return parser.parse_args()
+	args = parser.parse_args()
+
+	# gotta flatten these lists-of-lists.
+	for item_name in ("model_files", "input_file"):
+		if hasattr(args, item_name) and len(getattr(args, item_name)) > 0:
+			setattr(args, item_name, [item for sublist in getattr(args, item_name) for item in sublist])
+
+	return args
+

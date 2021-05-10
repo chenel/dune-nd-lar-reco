@@ -16,19 +16,23 @@ import summarize
 if __name__ == "__main__":
 	args = load_helpers.ParseArgs(load_helpers.RunType.INFERENCE)
 
-	cfg = load_helpers.LoadConfig(filename=args.config_file,
-	                              input_files=args.input_file,
-	                              model_file=args.model_file,
-	                              use_gpu=args.use_gpu)
+	for model_file in args.model_files:
+		cfg = load_helpers.LoadConfig(filename=args.config_file,
+		                              input_files=args.input_file,
+		                              model_file=model_file,
+		                              log_dir=args.log_dir,
+		                              batch_size=args.batch_size,
+		                              checkpoint_freq=args.checkpoint_freq,
+		                              use_gpu=args.use_gpu)
 
-	# add some options to customize this list ... eventually
-	summarizers = summarize.SUMMARIZER_COLUMNS.keys()
-	with save_helpers.GetHDF5(args.summary_hdf5, datasets=summarizers) as summary_file:
-		summarizer_fn = None
-		if args.summary_hdf5:
-			summarizer_fn = summarize.SummarizerRunner(summarizers, datasets={ds: summary_file[ds] for ds in summarizers})
+		# add some options to customize this list ... eventually
+		summarizers = summarize.SUMMARIZER_COLUMNS.keys()
+		with save_helpers.GetHDF5(args.summary_hdf5, datasets=summarizers) as summary_file:
+			summarizer_fn = None
+			if args.summary_hdf5:
+				summarizer_fn = summarize.SummarizerRunner(summarizers, datasets={ds: summary_file[ds] for ds in summarizers})
 
-		data = load_helpers.ProcessData(cfg, max_events=args.max_events, during=summarizer_fn)
+			data = load_helpers.ProcessData(cfg, max_events=args.max_events, during=summarizer_fn)
 
 	with open(args.output_file, "wb") as outf:
 		numpy.savez(outf, **data)
