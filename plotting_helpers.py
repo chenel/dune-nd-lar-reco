@@ -20,6 +20,15 @@ class Hist:
 		self.bins = bins
 		self.data = data
 
+	def Normalize(self):
+		if self.norm is None:
+			return
+
+		if self.norm != "density":
+			raise ValueError("Unknown normalization: '%s'" % self.norm)
+
+		self.data = self.data / numpy.array(numpy.diff(self.bins), float)
+		self.norm = None  # don't allow it to be done multiple times
 
 def req_vars_hist(var_names):
 	global REQUIRED_VARS
@@ -39,7 +48,7 @@ def req_vars_hist(var_names):
 	return decorator
 
 
-def hist_aggregate(hist_name, hist_dim=1, **hist_args):
+def hist_aggregate(hist_name, hist_dim=1, norm=None, **hist_args):
 	"""
 	Decorator to manage creating/updating a NumPy histogram inside a collection.
 
@@ -82,7 +91,7 @@ def hist_aggregate(hist_name, hist_dim=1, **hist_args):
 						assert all([numpy.array_equal(h.bins[i], bins[i]) for i in range(len(h.bins))])
 					hist_collection[full_hist_name].data += hist
 				else:
-					h = Hist(dim=hist_dim, bins=bins, data=hist)
+					h = Hist(dim=hist_dim, bins=bins, data=hist, norm=norm)
 					hist_collection[full_hist_name] = h
 
 		return _inner
