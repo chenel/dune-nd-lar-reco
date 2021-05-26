@@ -112,42 +112,44 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 		tstamp_iteration = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
 		handlers.watch.start('iteration')
 
-		d = {key: []}
-		o = {}
 		try:
+			d = {key: []}
+			o = {}
 			d, o = handlers.trainer.forward(it)
+
+			if "metadata" in d:
+				convert_to_geom_coords(d, d["metadata"][0])
+
+			PPNPostProcessing(d, o, score_threshold=score_threshold, type_score_threshold=type_score_threshold, type_threshold=type_threshold)
+
+			handlers.watch.stop('iteration')
+			tsum += handlers.watch.time('iteration')
+
+			mlreco.main_funcs.log(handlers, tstamp_iteration,
+								  tsum, o, handlers.cfg, epoch, d['index'][0])
+
+			if during is not None:
+				d, o = during(data=d, output=o)
+
+			# these are all dicts of lists (each list has one entry per event)
+			for this_batch, all_batches in (d, data), (o, output):
+				for k in this_batch:
+					if k not in all_batches:
+						all_batches[k] = []
+					all_batches[k] += this_batch[k]
+
+			if max_events is not None and evt_counter >= max_events:
+				break
+
 		except StopIteration:
 			break
+
 		finally:
 			lengths = set(len(d[k]) for k in d)
 			assert len(lengths) == 1, "key lengths not all the same: " + str({k: len(v) for k, v in d.items()})
 			evt_counter += lengths.pop()
 			print("\rProcessed %d/%d" % (evt_counter, n_evts), "events...", end='')
 			sys.stdout.flush()
-
-		if "metadata" in d:
-			convert_to_geom_coords(d, d["metadata"][0])
-
-		PPNPostProcessing(d, o, score_threshold=score_threshold, type_score_threshold=type_score_threshold, type_threshold=type_threshold)
-
-		handlers.watch.stop('iteration')
-		tsum += handlers.watch.time('iteration')
-
-		mlreco.main_funcs.log(handlers, tstamp_iteration,
-		                      tsum, o, handlers.cfg, epoch, d['index'][0])
-
-		if during is not None:
-			d, o = during(data=d, output=o)
-
-		# these are all dicts of lists (each list has one entry per event)
-		for this_batch, all_batches in (d, data), (o, output):
-			for k in this_batch:
-				if k not in all_batches:
-					all_batches[k] = []
-				all_batches[k] += this_batch[k]
-
-		if max_events is not None and evt_counter >= max_events:
-			break
 
 
 	data.update(output)
