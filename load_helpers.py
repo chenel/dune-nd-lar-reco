@@ -6,10 +6,11 @@
 """
 
 import argparse
+import datetime
 import enum
-import numpy
 import os.path
 import sys
+import time
 import yaml
 
 import mlreco.main_funcs
@@ -45,8 +46,8 @@ def convert_to_geom_coords(values, metadata, evnums=()):
 			ev[:, 2] = ev[:, 2] * metadata.size_voxel_z() + metadata.min_z()
 
 
-def PPNPostProcessing(data, output):
-	# there's post-processing that needs to be done with PPN before we transform coordinates
+def PPNPostProcessing(data, output, score_threshold, type_score_threshold, type_threshold):
+		# there's post-processing that needs to be done with PPN before we transform coordinates
 	missing_products = [p in data for p in ("points", "mask_ppn2", "segmentation")]
 	if any(missing_products):
 		print("Warning: missing products", missing_products, " so can't do PPN post-processing")
@@ -57,8 +58,9 @@ def PPNPostProcessing(data, output):
 		ppn[entry] = uresnet_ppn_type_point_selector(input_data,
 		                                             output,
 		                                             entry=entry,
-		                                             score_threshold=0.5,
-		                                             type_threshold=2)  # latter two args are from Laura D...
+		                                             score_threshold=score_threshold,
+		                                             type_threshold=type_threshold,
+													 type_score_threshold=type_score_threshold)  # latter two args are from Laura D...
 	output["ppn_post"] = ppn
 
 def ProcessData(cfg, before=None, during=None, max_events=None):
@@ -75,6 +77,17 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 
 	key = next(iter(cfg["iotool"]["dataset"]["schema"]))
 
+	# centralize the PPN parameters...
+	score_threshold = 0.5
+	type_score_threshold = 0.5
+	type_threshold = 2
+	if "model" in cfg and "modules" in cfg["model"] \
+			and "dbscan_frag" in cfg["model"]["modules"]:
+		score_threshold = cfg["model"]["modules"]["dbscan_frag"]["ppn_score_threshold"]
+		type_score_threshold = cfg["model"]["modules"]["dbscan_frag"]["ppn_type_score_threshold"]
+		type_threshold = cfg["model"]["modules"]["dbscan_frag"]["ppn_type_threshold"]
+
+
 	print("Processing...")
 	data = {}
 	output = {}
@@ -88,8 +101,17 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 		for x in data_io:
 			yield x
 
+	# todo: this loop *should* use mlreco3d.main_funcs.inference(),
+	#       but the example it was derived from didn't, so here we are.
+	#       over time it's inherited more and more of inference_loop()'s functionality...
+	#       it really should be adapted to use that machinery instead
+	tsum = 0.
 	it = iter(cycle(handlers.data_io))
 	while True:
+		epoch = handlers.iteration / float(len(handlers.data_io))
+		tstamp_iteration = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')
+		handlers.watch.start('iteration')
+
 		d = {key: []}
 		o = {}
 		try:
@@ -106,7 +128,13 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 		if "metadata" in d:
 			convert_to_geom_coords(d, d["metadata"][0])
 
-		PPNPostProcessing(d, o)
+		PPNPostProcessing(d, o, score_threshold=score_threshold, type_score_threshold=type_score_threshold, type_threshold=type_threshold)
+
+		handlers.watch.stop('iteration')
+		tsum += handlers.watch.time('iteration')
+
+		mlreco.main_funcs.log(handlers, tstamp_iteration,
+		                      tsum, o, handlers.cfg, epoch, d['index'][0])
 
 		if during is not None:
 			d, o = during(data=d, output=o)
@@ -127,7 +155,9 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 	return data
 
 
-def LoadConfig(filename, input_files, batch_size=None, use_gpu=True, **kwargs):
+def LoadConfig(filename, input_files, log_dir=None,
+               batch_size=None, checkpoint_freq=None,
+               use_gpu=True, **kwargs):
 	cfg = yaml.load(open(filename))
 
 	if "iotool" in cfg and "dataset" in cfg["iotool"]:
@@ -153,8 +183,11 @@ def LoadConfig(filename, input_files, batch_size=None, use_gpu=True, **kwargs):
 	return cfg
 
 
-def ConfigInference(cfg, model_file):
+def ConfigInference(cfg, model_file, report_step=None):
 	cfg["trainval"]["model_path"] = model_file
+
+	# don't want all its output to screen...
+	cfg["trainval"]["report_step"] = report_step
 
 	assert os.path.isfile(os.path.expandvars(model_file)), "Invalid model file path provided: " + model_file
 
