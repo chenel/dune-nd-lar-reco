@@ -117,10 +117,10 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 			o = {}
 			d, o = handlers.trainer.forward(it)
 
+			PPNPostProcessing(d, o, score_threshold=score_threshold, type_score_threshold=type_score_threshold, type_threshold=type_threshold)
+
 			if "metadata" in d:
 				convert_to_geom_coords(d, d["metadata"][0])
-
-			PPNPostProcessing(d, o, score_threshold=score_threshold, type_score_threshold=type_score_threshold, type_threshold=type_threshold)
 
 			handlers.watch.stop('iteration')
 			tsum += handlers.watch.time('iteration')
