@@ -40,8 +40,12 @@ def ParseArgs():
 
 	plots_args = parser.add_argument_group("plots", "Which plots to make")
 	for module, description in KNOWN_PLOT_MODULES.items():
-		plots_args.add_argument("--disable_" + module,action="store_true", default=False,
-		                        help="Don't make plots regarding " + description)
+		module_args = parser.add_mutually_exclusive_group()
+		module_args.add_argument("--disable_" + module,action="store_true", default=False,
+		                         help="Don't make plots regarding " + description)
+
+		module_args.add_argument("--only_" + module,action="store_true", default=False,
+		                         help="ONLY make plots regarding " + description)
 
 	args = parser.parse_args()
 
@@ -50,6 +54,19 @@ def ParseArgs():
 	#  so we set no default above, and if it comes back empty, we add the default here)
 	if args.img_format is None:
 		args.img_format = ["pdf", "png"]
+
+	# manually handle any `--only_` flags here by reinterpreting them with `--disable` ones
+	n_onlys = 0
+	for arg in vars(args):
+		argval = getattr(args, arg)
+		if not arg.startswith("only_") or not argval: continue
+		n_onlys += 1
+		if n_onlys > 1:
+			print("Specified multiple '--only' arguments.  Abort.")
+			exit(1)
+		for module in KNOWN_PLOT_MODULES:
+			if module == arg.split("_")[-1]: continue
+			setattr(args, "disable_" + module, True)
 
 	return args
 
