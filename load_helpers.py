@@ -25,9 +25,10 @@ class RunType(enum.Enum):
 # variables that should be coordinated to geometric coordinates
 GEOM_COORD_VARS = [
 	"input_data",
-	"segment_label",
+	"cluster_label",
 	"ppn_post",
 	"particles_label"
+	"segment_label",
 ]
 
 
