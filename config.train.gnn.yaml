@@ -42,8 +42,8 @@ model:
       enable_cnn_clust: False
       enable_gnn_shower: True
       use_ppn_in_gnn: True
-      enable_gnn_tracks: True
-      enable_gnn_int: False
+      enable_gnn_track: True
+      enable_gnn_inter: False
       enable_ghost: False
 
     # UResNet has lots of uses, but this one's configured for semantic segmentation on hits
@@ -269,9 +269,9 @@ trainval:
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: snapshot
-  iterations: 15000
+  iterations: 5000
   report_step: 1
-  checkpoint_step: 1000
+  checkpoint_step: 500
   log_dir: log_train
   train: True
   debug: False
