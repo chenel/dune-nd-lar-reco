@@ -42,7 +42,7 @@ iotool:
 
 model:
   # this is a misnomer (ghost hits not required), but that's what it's currently hooked up as
-  name: ghost_chain
+  name: full_chain
   modules:
     # this is the thing that drives all the rest...
     chain:
@@ -52,7 +52,7 @@ model:
       enable_cnn_clust: False
       enable_gnn_shower: True
       use_ppn_in_gnn: True
-      enable_gnn_tracks: True
+      enable_gnn_track: True
       enable_gnn_int: False
       enable_ghost: False
 
@@ -100,7 +100,7 @@ model:
       michel_label: 2  # needs to match larcv::kShapeMichel
       delta_label: 3   # needs to match larcv::kShapeDelta
       track_clustering_method: 'masked_dbscan' # masked_dbscan, closest_path
-      ppn_score_threshold: 0.5 # 0.9
+      ppn_score_threshold: 0.9 # 0.5 # 0.9
       ppn_type_score_threshold: 0.5
       ppn_type_threshold: 1.999
       ppn_mask_radius: 10
@@ -112,33 +112,20 @@ model:
       base:
         node_type: 0
         node_min_size: 10
-#        node_min_size: -1
-#        source_col: 5
-#        use_dbscan: False
-#        network: complete
-#        edge_max_dist: -1
-#        edge_dist_metric: set
-#        edge_dist_numpy: False
-#        add_start_point: True
-#        add_start_dir: True
-#      dbscan:
-#        epsilon: 1.999
-#        minPoints: 1
-#        num_classes: 1
-#        data_dim: 3
+        add_start_point: True
+        add_start_dir: True
+        start_dir_max_dist: 5
       node_encoder:
         name: geo
-#        use_numpy: False
-        use_numpy: True
+        use_numpy: False
       edge_encoder:
         name: geo
-#        use_numpy: False
-        use_numpy: True
+        use_numpy: False
       gnn_model:
         name: meta
         edge_feats: 19
-#        node_feats: 22
-        node_feats: 24
+        node_feats: 28
+        node_classes: 2
         edge_classes: 2
         node_output_feats: 64
         edge_output_feats: 64
@@ -148,39 +135,35 @@ model:
     grappa_shower_loss:
       node_loss:
         name: primary
-        loss: CE
-        reduction: sum
-        balance_classes: False
         high_purity: True
         use_group_pred: True
         group_pred_alg: score
       edge_loss:
         name: channel
-        loss: CE
         source_col: 5
         target_col: 6
-        reduction: sum
-        balance_classes: False
-        target: group
         high_purity: True
 
     # Optionally, a GNN can also be used to connect the track-type fragments together.
     # (it's off by default; see the flag 'enable_gnn_tracks' above under 'chain')
     grappa_track:
-      model_name: 'track_gnn'
+#      model_name: 'grappa_track'
       base:
         node_type: 1
-        node_min_size: 10
+        node_min_size: 3
+        add_start_point: True
+        add_start_dir: True
+        start_dir_max_dist: 5
       node_encoder:
         name: 'geo'
-        use_numpy: True
+        use_numpy: False
       edge_encoder:
         name: 'geo'
-        use_numpy: True
+        use_numpy: False
       gnn_model:
-        name: modular_meta
+        name: meta
         edge_feats: 19
-        node_feats: 16 #22 #w/ start point and direction
+        node_feats: 28
         node_classes: 2
         edge_classes: 2
         node_output_feats: 64
@@ -191,11 +174,7 @@ model:
     grappa_track_loss:
       edge_loss:
         name: channel
-        loss: CE
-        reduction: sum
-        balance_classes: False
-        target: group
-        high_purity: True
+        high_purity: False
         source_col: 5
         target_col: 6
 
@@ -230,6 +209,7 @@ model:
         name: meta
         edge_feats: 19
         node_feats: 28
+        node_classes: 5
         edge_classes: 2
         node_output_feats: 64
         edge_output_feats: 64
@@ -270,9 +250,17 @@ model:
 trainval:
   seed: 123
   concat_result: ['embeddings', 'seediness', 'margins',
-                  'clust_fragments', 'fragments', 'frag_edge_index', 'frag_edge_pred', 'frag_node_pred', 'frag_group_pred',
-                  'track_fragments', 'track_node_pred', 'track_edge_pred', 'track_edge_index', 'track_group_pred',
-                  'particles', 'inter_edge_index', 'inter_edge_pred', "event_base"]
+                  'total_num_points', 'total_nonghost_points',
+                  'fragments', 'fragments_seg',
+                  'clust_fragments', 'clust_frag_seg',
+                  'shower_fragments', 'shower_edge_index', 'shower_edge_pred', 'shower_node_pred','shower_group_pred',
+                  'track_fragments', 'track_edge_index', 'track_node_pred', 'track_edge_pred', 'track_group_pred',
+                  'particles', 'particle_fragments', 'particle_edge_index', 'particle_node_pred', 'particle_edge_pred', 'particle_group_pred',
+                  'node_pred_p', 'node_pred_type', 'node_pred_vtx',
+                  'flow_edge_pred',
+                  'interactions', 'inter_cosmic_pred', 'inter_edge_index', 'inter_edge_pred',
+                  'kinematics_particles', 'kinematics_edge_index',
+                  "event_base"]
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: weights/snapshot
