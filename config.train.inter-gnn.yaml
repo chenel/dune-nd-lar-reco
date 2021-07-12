@@ -39,13 +39,13 @@ model:
       enable_gnn_shower: True
       use_ppn_in_gnn: True
       enable_gnn_track: True
-      enable_gnn_int: True
+      enable_gnn_inter: True
       enable_ghost: False
 
     # UResNet has lots of uses, but this one's configured for semantic segmentation on hits
     uresnet_ppn:
       uresnet_lonely:
-        freeze: True
+        freeze_weights: True
         num_strides: 7    # (number of downsample layers) + 1
         filters: 16       # number of features generated at first layer, doubled (?) each layer
         num_classes: 5
@@ -59,7 +59,7 @@ model:
       # "point of interest" network
       # (note: depends on UResNet image filters from uresnet_lonely above; don't run without)
       ppn:
-        freeze: True
+        freeze_weights: True
         num_strides: 7   # needs to match UResNet.  (allows PPN to understand its input)
         filters: 16      # ditto
         num_classes: 5   # ditto
@@ -269,7 +269,7 @@ trainval:
   weight_prefix: snapshot
   iterations: 1000
   report_step: 1
-  checkpoint_step: 100
+  checkpoint_step: 25
   log_dir: log_train
   train: True
   debug: False
