@@ -240,7 +240,7 @@ model:
 
   network_input:
     - input_data
-#    - particles_label
+    - particles_label
 
   # note that these need to match the arguments to forward() for the model's Loss
   # (so, since 'ghost_chain' currently maps to GhostChain2, this means GhostChain2Loss.forward())
