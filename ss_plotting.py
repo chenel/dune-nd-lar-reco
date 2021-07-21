@@ -6,7 +6,15 @@ import seaborn
 import plotting_helpers
 
 
-@plotting_helpers.req_vars_hist(["segment_label", "segmentation"])
+@plotting_helpers.hist_aggregate("vox-E", bins=numpy.logspace(numpy.log10(0.01), numpy.log10(10), 50))
+def agg_voxE_reco(vals):
+#	print(vals["segmentation"])
+	print(vals["input_data"][numpy.argmax(vals["segmentation"], axis=1) == 1][:, 4])
+	reco_labels = numpy.argmax(vals["segmentation"], axis=1)
+	return { "label=" + plotting_helpers.SHAPE_LABELS[label]: vals["input_data"][reco_labels == label][:, 4]
+	         for label in plotting_helpers.SHAPE_LABELS }
+
+@plotting_helpers.req_vars_hist(["input_data", "segment_label", "segmentation"])
 def BuildHists(data, hists):
 	# really I should reformat the data so that the event number is one of the columns...
 	for evt_idx in range(len(data["segment_label"])):
@@ -36,6 +44,13 @@ def BuildHists(data, hists):
 				h.bins = bins
 				h.data = hist
 				hists[hist_name] = h
+
+	for evt_idx in range(len(data["segmentation"])):
+		# first: number of tracks
+		evt_data = { k: data[k][evt_idx] for k in data }
+		for agg_fn in (agg_voxE_reco,):
+			agg_fn(evt_data, hists)
+
 
 # def HistPPNPerformance(data, hists):
 # 	for evt_idx in range(len(data["raw_data"]["segment_label"])):
@@ -78,3 +93,16 @@ def PlotHists(hists, outdir, fmts):
 	ax.tick_params(axis="y", rotation=0)
 
 	plotting_helpers.savefig(plt, "ss_migration", outdir, fmts)
+
+	vox_by_label_hists = {hname: hists[hname] for hname in hists if hname.startswith("vox-E_label=")}
+	if len(vox_by_label_hists):
+		hist_labels = {}
+		for hname in vox_by_label_hists:
+			hist_labels[hname] = hname.split("=")[-1]
+		fig, ax = plotting_helpers.overlay_hists(vox_by_label_hists,
+		                                         xaxis_label="Voxel energy (MeV)",
+		                                         yaxis_label="Voxels",
+		                                         hist_labels=hist_labels)
+#		ax.set_xscale("log")
+		plotting_helpers.savefig(fig, "reco-vox-E", outdir, fmts)
+
