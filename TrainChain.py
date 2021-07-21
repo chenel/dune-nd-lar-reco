@@ -42,7 +42,7 @@ def ParseArgs():
 
 	parser.add_argument("--config_file", "-c", required=True,
 	                    help="YAML base configuration that will be augmented with other arguments.")
-	parser.add_argument("--input_file", "-i", required=True, action="append", default=[],
+	parser.add_argument("--input_file", "-i", required=True, nargs="+", default=[],
 	                    help="Supera input .root file(s) to use for training.")
 	parser.add_argument("--output_dir", required=True,
 	                    help="Directory to write output files into.")
