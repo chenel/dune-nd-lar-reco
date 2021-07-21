@@ -18,6 +18,8 @@ KNOWN_PLOT_MODULES = {
 
 	"shower": "Shower fragment grouping",
 	"track":  "Track fragment grouping",
+
+	"inter": "Neutrino interaction grouping",
 }
 
 ALLOWED_OUTPUT_FORMATS = [
