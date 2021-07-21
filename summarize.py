@@ -75,7 +75,12 @@ def summarizer(columns):
                 if isinstance(dataset, h5py.Dataset):
                     old_size = len(dataset)
                     dataset.resize(old_size + len(out), axis=0)
-                    dataset[old_size:old_size + len(out), :] = out
+                    try:
+                        dataset[old_size:old_size + len(out), :] = out
+                    except ValueError as e:
+                        print("h5py reports error trying to write to file:", e)
+                        print("Object I tried to write was:", out)
+                        print("Skipping to next event...")
                 elif hasattr(dataset, "append"):
                     dataset.append(out)
 
