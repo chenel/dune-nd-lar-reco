@@ -17,9 +17,16 @@ def reco_inter_voxel_ids(vals, inter_idx):
 	# for the cluster group object in "inter_particles" at the same index,
 	# so we have to combine the voxels in all those cluster groups
 	if "reco_inter_voxel_ids" not in vals:
-		vals["reco_inter_voxel_ids"] =  numpy.concatenate(vals["input_data"][vals["inter_particles"][numpy.where(vals["inter_group_pred"] == inter_idx)]])
+		vals["reco_inter_voxel_ids"] = {}
+	if inter_idx not in vals["reco_inter_voxel_ids"]:
+#		print("for interaction index", inter_idx, " there are the following particle voxel collections:")
+		vox_collections = tuple(vals["inter_particles"][numpy.nonzero(vals["inter_group_pred"] == inter_idx)])
+#		print(type(vox_collections), vox_collections)
+		concatenated = numpy.concatenate(vox_collections)
+#		print("concatenated:", concatenated)
+		vals["reco_inter_voxel_ids"][inter_idx] = concatenated
 
-	return vals["reco_inter_voxel_ids"]
+	return vals["reco_inter_voxel_ids"][inter_idx]
 
 
 #------------------------------------------------------
