@@ -31,18 +31,18 @@ def reco_inter_voxel_ids(vals, inter_idx):
 
 #------------------------------------------------------
 
-@plotting_helpers.hist_aggregate("n-inter-reco", bins=50, range=(0,50))
+@plotting_helpers.hist_aggregate("n-inter-reco", bins=50, range=(0,100))
 def agg_ninter_reco(vals):
-	print(vals["inter_group_pred"])
+#	print(vals["inter_group_pred"])
 	return [len(numpy.unique(vals["inter_group_pred"])),]
 
 
-@plotting_helpers.hist_aggregate("n-inter-true", bins=50, range=(0,50))
+@plotting_helpers.hist_aggregate("n-inter-true", bins=50, range=(0,100))
 def agg_ninter_true(vals):
 	return [len(numpy.unique(vals["cluster_label"][:, 7])),]
 
 
-@plotting_helpers.hist_aggregate("n-vox-inter-reco", bins=50, range=(0,50))
+@plotting_helpers.hist_aggregate("n-vox-inter-reco", bins=60, range=(0,300))
 def agg_nvox_inter_reco(vals):
 
 	inter_nhit = []
@@ -55,16 +55,15 @@ def agg_nvox_inter_reco(vals):
 	return inter_nhit
 
 
-@plotting_helpers.hist_aggregate("n-vox-inter-true", bins=50, range=(0,50))
+@plotting_helpers.hist_aggregate("n-vox-inter-true", bins=60, range=(0,300))
 def agg_nvox_inter_true(vals):
-
-	return [numpy.count_nonzero(vals["cluster_label"][, :7] == inter_lbl & vals["input_data"] > VOXEL_THRESHOLD_MEV)
-	        for inter_lbl in numpy.unique(vals["cluster_label"][, :7])]
+	return [numpy.count_nonzero((vals["cluster_label"][:, 7] == inter_lbl) & (vals["cluster_label"][:, 4] > VOXEL_THRESHOLD_MEV))
+	        for inter_lbl in numpy.unique(vals["cluster_label"][:, 7])]
 
 
 #------------------------------------------------------
 
-@plotting_helpers.req_vars_hist(["input_data", "inter_group_pred", "cluster_label",
+@plotting_helpers.req_vars_hist(["input_data", "inter_group_pred", "inter_particles", "cluster_label",
                                  "metadata", "event_base"])
 def BuildHists(data, hists):
 	for evt_idx in range(len(data["cluster_label"])):
@@ -79,6 +78,7 @@ def PlotHists(hists, outdir, fmts):
 	if all(ninter_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(ninter_hists,
 		                                         xaxis_label=r"$\nu$ interaction multiplicity",
+		                                         yaxis_label="Spills",
 		                                         hist_labels={"n-inter-reco": "Reco", "n-inter-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-inter", outdir, fmts)
@@ -86,7 +86,8 @@ def PlotHists(hists, outdir, fmts):
 	nvox_inter_hists = {hname: hists[hname] for hname in ("n-vox-inter-reco", "n-vox-inter-true")}
 	if all(nvox_inter_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(nvox_inter_hists,
-		                                         xaxis_label=r"Number of voxels in interactions",
+		                                         xaxis_label=r"Number of voxels in interaction ($E_{{vox}} > {}$ MeV)".format(VOXEL_THRESHOLD_MEV),
+		                                         yaxis_label=r"$\nu$ interactions",
 		                                         hist_labels={"n-vox-inter-reco": "Reco", "n-vox-inter-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-vox-inter", outdir, fmts)
