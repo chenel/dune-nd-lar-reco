@@ -123,21 +123,33 @@ def agg_ungrouped_trueint_energy_frac(vals):
 	return inter_unmatch_frac
 
 
-@plotting_helpers.hist_aggregate("largest-trueint-energy-matched-frac", bins=25, range=(0,1.04))
+@plotting_helpers.hist_aggregate("largest-trueint-energy-matched-frac", bins=26, range=(0,1.04))
 def agg_trueint_largest_matched_energy_frac(vals):
 
 	inter_match_frac = []
-	for inter_lbl in true_inter_lbls(vals):
+#	print("There are", len(vals["input_data"]), "total voxels in this spill")
+	for idx, inter_lbl in enumerate(true_inter_lbls(vals)):
+		# this is the true label for *all* externally-entering stuff.
+		# because they're lumped together, we can't properly assess
+		# whether each individual (e.g.) rock muon is correctly matched,
+		# so we just skip it here.
+		if inter_lbl < 0:
+			continue
+
 		true_vox = vals["input_data"][true_inter_voxel_ids(vals, inter_lbl)]
 		true_E_sum = true_vox[:, 4].sum()
 		assert(true_E_sum > 0)
+#		print("interaction label", inter_lbl, "(index {})".format(idx), "has", len(true_vox), "voxels with a total energy of", true_E_sum)
 
 		max_matched_E = 0
 		true_vox_copy = numpy.array(true_vox[:, :3])  # need to copy to get the information contiguous
-		for particle_vox_indices in vals["inter_particles"]:
+		for part_idx, particle_vox_indices in enumerate(vals["inter_particles"]):
 			reco_vox = vals["input_data"][particle_vox_indices]
-			matched_vox_indices = find_matching_rows(numpy.array(reco_vox[:, :3]), true_vox_copy)
-			matched_E = reco_vox[matched_vox_indices][:, 4].sum()
+			matched_vox_mask = find_matching_rows(numpy.array(reco_vox[:, :3]), true_vox_copy, mask_only=True)
+			matched_E = reco_vox[matched_vox_mask][:, 4].sum()
+			# if matched_E > 0:
+			# 	print("    particle", part_idx, "has", len(reco_vox), "voxels, of which")
+			# 	print("        ", numpy.count_nonzero(matched_vox_mask), "match to the true interaction for total matched energy of", matched_E)
 
 			max_matched_E = max(max_matched_E, matched_E)
 
