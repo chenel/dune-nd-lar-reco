@@ -198,7 +198,8 @@ def BuildHists(data, hists):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (agg_ninter_reco, agg_ninter_true, agg_nvox_inter_reco, agg_nvox_inter_true,
-		               agg_ungrouped_trueint_energy_frac, agg_trueint_largest_matched_energy_frac):
+		               agg_ungrouped_trueint_energy_frac, agg_trueint_largest_matched_energy_frac,
+		               agg_recoint_purity):
 			agg_fn(evt_data, hists)
 
 
@@ -222,12 +223,16 @@ def PlotHists(hists, outdir, fmts):
 		plotting_helpers.savefig(fig, "n-vox-inter", outdir, fmts)
 
 	hist_labels = {
-		"ungrouped-trueint-energy-frac":       r"Frac. true vis. $E_{dep}$ unmatched to reco int.",
-		"largest-trueint-energy-matched-frac": r"Max frac. true vis. $E_{dep}$ matched to reco int.",
+		"ungrouped-trueint-energy-frac":       (r"Frac. true vis. $E_{dep}$ unmatched to reco int.",
+		                                        r"True $\nu$ interactions"),
+		"largest-trueint-energy-matched-frac": (r"Max frac. true vis. $E_{dep}$ matched to reco int.",
+		                                        r"True $\nu$ interactions"),
+		"recoint-purity-frac":                 (r"Reco. interaction purity",
+		                                         r"Reco. $\nu$ interactions"),
 	}
-	for plot, xlabel in hist_labels.items():
+	for plot, (xlabel, ylabel) in hist_labels.items():
 		if plot in hists:
 			fig, ax = plotting_helpers.overlay_hists({plot: hists[plot]},
 			                                         xaxis_label=xlabel,
-			                                         yaxis_label=r"True $\nu$ interactions")
+			                                         yaxis_label=ylabel)
 			plotting_helpers.savefig(fig, plot, outdir, fmts)
