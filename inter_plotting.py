@@ -105,7 +105,7 @@ def agg_nvox_inter_true(vals):
 	        for inter_lbl in true_inter_lbls(vals)]
 
 
-@plotting_helpers.hist_aggregate("ungrouped-trueint-energy-frac", bins=26, range=(0,1.04))
+@plotting_helpers.hist_aggregate("ungrouped-trueint-energy-frac", bins=27, range=(0,1.08))
 def agg_ungrouped_trueint_energy_frac(vals):
 
 	inter_unmatch_frac = []
@@ -123,7 +123,7 @@ def agg_ungrouped_trueint_energy_frac(vals):
 	return inter_unmatch_frac
 
 
-@plotting_helpers.hist_aggregate("largest-trueint-energy-matched-frac", bins=26, range=(0,1.04))
+@plotting_helpers.hist_aggregate("largest-trueint-energy-matched-frac", bins=27, range=(0,1.08))
 def agg_trueint_largest_matched_energy_frac(vals):
 
 	inter_match_frac = []
@@ -158,7 +158,7 @@ def agg_trueint_largest_matched_energy_frac(vals):
 	return inter_match_frac
 
 
-@plotting_helpers.hist_aggregate("recoint-purity-frac", bins=26, range=(0,1.04))
+@plotting_helpers.hist_aggregate("recoint-purity-frac", bins=27, range=(0,1.08))
 def agg_recoint_purity(vals):
 
 	reco_purity = []
