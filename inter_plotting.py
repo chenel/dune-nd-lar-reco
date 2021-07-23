@@ -157,6 +157,38 @@ def agg_trueint_largest_matched_energy_frac(vals):
 
 	return inter_match_frac
 
+
+@plotting_helpers.hist_aggregate("recoint-purity-frac", bins=26, range=(0,1.04))
+def agg_recoint_purity(vals):
+
+	reco_purity = []
+	for inter in numpy.unique(vals["inter_group_pred"]):
+		inter_vox_ids = reco_inter_voxel_ids(vals, inter)
+		reco_vox = vals["input_data"][inter_vox_ids]
+
+		matched_energy = {}
+		for idx, true_inter_lbl in enumerate(true_inter_lbls(vals)):
+			true_vox = vals["input_data"][true_inter_voxel_ids(vals, true_inter_lbl)]
+			true_vox_copy = numpy.array(true_vox[:, :3])
+
+			matched_vox_mask = find_matching_rows(numpy.array(reco_vox[:, :3]), true_vox_copy, mask_only=True)
+			matched_E = reco_vox[matched_vox_mask][:, 4].sum()
+			if matched_E > 0:
+				matched_energy[true_inter_lbl] = matched_E
+
+		max_match_true_int = max(matched_energy, key=matched_energy.get)
+
+		# all "externally entering" interactions (i.e. rock muons)
+		# are lumped together into true interaction -1,
+		# so if they are the leading energy depositor to this reco interaction,
+		# we can't work out the purity (this reco interaction might have
+		# two rock muons in it...).
+		# so we just skip any like that.
+		if max_match_true_int > 0:
+			reco_purity.append(matched_energy[max_match_true_int] / reco_vox[:, 4].sum())
+
+	return reco_purity
+
 #------------------------------------------------------
 
 @plotting_helpers.req_vars_hist(["input_data", "inter_group_pred", "inter_particles", "cluster_label",
