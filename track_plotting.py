@@ -150,7 +150,7 @@ def truth_track_lengths_cm(vals):
 		lengths = vals["true_track_lengths"]
 	else:
 		lengths = numpy.array([p.first_step().as_point3d().distance(p.last_step().as_point3d())
-		                       for p in vals["particles"]
+		                       for p in vals["particles_raw"]
 		                       if p.shape() == TRACK_LABEL])
 		vals["true_track_lengths"] = lengths
 
@@ -164,7 +164,7 @@ def truth_track_pids(vals):
 	if key in vals:
 		pids = vals[key]
 	else:
-		pids = numpy.array([p.pdg_code() for p in vals["particles"] if p.shape() == TRACK_LABEL])
+		pids = numpy.array([p.pdg_code() for p in vals["particles_raw"] if p.shape() == TRACK_LABEL])
 		vals[key] = pids
 
 	return pids
@@ -172,7 +172,7 @@ def truth_track_pids(vals):
 
 def true_muon_vox(vals):
 	if "true_muon_voxels" not in vals:
-		part_pdg_group = numpy.array([(p.pdg_code(), p.group_id()) for p in vals["particles"] if p.shape() == TRACK_LABEL])
+		part_pdg_group = numpy.array([(p.pdg_code(), p.group_id()) for p in vals["particles_raw"] if p.shape() == TRACK_LABEL])
 		if len(part_pdg_group) < 1:
 			return numpy.empty(shape=(0, 4))
 
@@ -216,7 +216,7 @@ def matched_track_indices(vals, proj_overlap_frac_cut=0.95):
 
 	truth_start = []
 	truth_end = []
-	for p in vals["particles"]:
+	for p in vals["particles_raw"]:
 		if p.shape() != TRACK_LABEL:
 			continue
 
@@ -379,7 +379,7 @@ def agg_muontrk_completeness_vs_truemuKE(vals):
 	calc_vals = completeness(vals)
 
 	true_mu_KE = None
-	for p in vals["particles"]:
+	for p in vals["particles_raw"]:
 		if abs(p.pdg_code()) != 13: continue
 
 		true_mu_KE = p.energy_init() - 105.658
@@ -477,10 +477,10 @@ def agg_muontrk_purity_vs_muonVisE(vals):
 
 #------------------------------------------------------
 
-@plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles", "metadata", "cluster_label",
+@plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
                                  "event_base"])
 def BuildHists(data, hists):
-	for evt_idx in range(len(data["particles"])):
+	for evt_idx in range(len(data["particles_raw"])):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (agg_trklen_reco, agg_trklen_true,
@@ -546,7 +546,7 @@ def PlotHists(hists, outdir, fmts):
 			hist_labels[hname] = PDG[int(hname.split("=")[-1])]
 		fig, ax = plotting_helpers.overlay_hists(trklen_by_pid_hists,
 		                                         xaxis_label="True particle trajectory length (cm)",
-		                                         yaxis_label="Particles",
+		                                         yaxis_label="particles_raw",
 		                                         hist_labels=hist_labels)
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "trk-length-truepid", outdir, fmts)
