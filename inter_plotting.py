@@ -92,7 +92,7 @@ def true_muon_reco_matches(vals):
 		for mu_cluster_id, vox_idxs in true_muon_voxidxs_by_cluster(vals).items():
 			total_mu_visE = vals["input_data"][vox_idxs, 4].sum()
 			assert total_mu_visE > 0
-			print("muon label", mu_cluster_id, " voxels:", vox_idxs)
+#			print("muon label", mu_cluster_id, " voxels:", vox_idxs)
 			for reco_inter_label in numpy.unique(vals["inter_group_pred"]):
 				reco_inter_vox = reco_inter_voxel_ids(vals, reco_inter_label)
 #				print("   reco interaction", reco_inter_label, "voxels:", type(reco_inter_vox), reco_inter_vox)
@@ -104,7 +104,7 @@ def true_muon_reco_matches(vals):
 
 		vals[key] = true_mu_recoint_match
 
-	print(vals[key])
+#	print(vals[key])
 	return vals[key]
 
 def true_muon_voxidxs_by_cluster(vals):
