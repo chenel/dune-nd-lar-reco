@@ -1,5 +1,5 @@
 iotool:
-  batch_size: 256
+  batch_size: 32
   minibatch_size: -1
   shuffle: False
   num_workers: 1
@@ -10,7 +10,8 @@ iotool:
   dataset:
     name: LArCVDataset
 #    data_keys: ['/gpfs/slac/staas/fs1/g/neutrino/jwolcott/data/dune/nd/nd-lar-reco/supera/nd.fhc.geometry-update.supera.voxpitch=4mm.nothresh.filter-emptytens+nopart.root']
-    data_keys: ['/gpfs/slac/staas/fs1/g/neutrino/jwolcott/data/dune/nd/nd-lar-reco/supera/geom-20210405/FHC.1000478.larcv.root']
+#    data_keys: ['/gpfs/slac/staas/fs1/g/neutrino/jwolcott/data/dune/nd/nd-lar-reco/supera/geom-20210405/FHC.1000478.larcv.root']
+    data_keys: ['/media/hdd1/jwolcott/data/dune/nd/nd-lar-reco/supera/geom-20210405/FHC.1000336.larcv.root']
     limit_num_files: 10
     schema:
       input_data:
@@ -39,9 +40,9 @@ model:
       enable_ppn: True
       # note that currently DBScan is automatically enabled if any of the CNN or GNNs below is enabled
       enable_cnn_clust: False
-      enable_gnn_shower: False
-      use_ppn_in_gnn: False
-      enable_gnn_tracks: False
+      enable_gnn_shower: True
+      use_ppn_in_gnn: True
+      enable_gnn_tracks: True
       enable_gnn_int: False
       enable_ghost: False
 
@@ -98,6 +99,7 @@ model:
     # DBScan fragments of "track" hits are taken to be tracks,
     # and a GNN is used to group the "shower" DBScan fragments into showers.
     grappa_shower:
+      model_name: ''
       base:
         node_type: 0
         node_min_size: 10
@@ -156,7 +158,7 @@ model:
     # Optionally, a GNN can also be used to connect the track-type fragments together.
     # (it's off by default; see the flag 'enable_gnn_tracks' above under 'chain')
     grappa_track:
-#      model_name: 'track_gnn'
+      model_name: 'grappa_track'
       base:
         node_type: 1
         node_min_size: 10
@@ -263,9 +265,18 @@ model:
 trainval:
   seed: 123
   concat_result: ['embeddings', 'seediness', 'margins',
-                  'clust_fragments', 'fragments', 'frag_edge_index', 'frag_edge_pred', 'frag_node_pred', 'frag_group_pred',
-                  'track_fragments', 'track_node_pred', 'track_edge_pred', 'track_edge_index', 'track_group_pred',
-                  'particles', 'inter_edge_index', 'inter_edge_pred', "event_base"]
+                  'total_num_points', 'total_nonghost_points',
+                  'fragments', 'fragments_seg',
+                  'clust_fragments', 'clust_frag_seg',
+                  'shower_fragments', 'shower_edge_index', 'shower_edge_pred', 'shower_node_pred','shower_group_pred',
+                  'track_fragments', 'track_edge_index', 'track_node_pred', 'track_edge_pred', 'track_group_pred',
+                  'particles', 'particle_fragments', 'particle_edge_index', 'particle_node_pred', 'particle_edge_pred', 'particle_group_pred',
+                  'node_pred_p', 'node_pred_type', 'node_pred_vtx',
+                  'flow_edge_pred',
+                  'interactions', 'inter_cosmic_pred', 'inter_edge_index', 'inter_edge_pred',
+                  'kinematics_particles', 'kinematics_edge_index',
+                  "event_base"]
+  gpus: '0'
   learning_rate: 0.001
   unwrapper: unwrap_3d_scn
   weight_prefix: weights/snapshot
