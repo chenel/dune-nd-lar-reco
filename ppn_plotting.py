@@ -95,12 +95,12 @@ def PlotHists(hists, outdir, fmts):
 
 	point_dist_hists = {hname: hists[hname] for hname in hists if hname.startswith("point-dist") and hists[hname]}
 	if len(point_dist_hists):
-		print(POINT_DIST_BINS[-1] / CM_PER_VOXEL, "voxel bins to consider")
+		# print(POINT_DIST_BINS[-1] / CM_PER_VOXEL, "voxel bins to consider")
 		for hname in point_dist_hists:
-			print("For hist '%s':" % hname)
-			for bound in range(len(hists[hname].data)):
-				print("  ", sum(hists[hname].data[:bound])/sum(hists[hname].data),
-					  "of distribution lies within %f voxels" % (hists[hname].bins[bound] / CM_PER_VOXEL))
+		# 	print("For hist '%s':" % hname)
+		# 	for bound in range(len(hists[hname].data)):
+		# 		print("  ", sum(hists[hname].data[:bound])/sum(hists[hname].data),
+		# 			  "of distribution lies within %f voxels" % (hists[hname].bins[bound] / CM_PER_VOXEL))
 
 			hists[hname].Normalize()
 
