@@ -68,12 +68,14 @@ def true_inter_voxel_ids(vals, inter_lbl):
 
 		:param inter_lbl   The true interaction label of interest
 		:return: array of indices for voxels in vals["input_data"] """
+
 	if "true_inter_voxel_ids" not in vals:
 		vals["true_inter_voxel_ids"] = {}
 	if inter_lbl not in vals["true_inter_voxel_ids"]:
 		# unfortunately the cluster_label and input_data vox are not guaranteed to be in the same order
 		voxel_pos = vals["cluster_label"][vals["cluster_label"][:, 7] == inter_lbl, :3]
 		vals["true_inter_voxel_ids"][inter_lbl] = find_matching_rows(numpy.array(vals["input_data"][:, :3]), numpy.array(voxel_pos))
+#	print("Number of voxels in true interaction", inter_lbl, ":", len(vals["true_inter_voxel_ids"][inter_lbl]))
 
 	return vals["true_inter_voxel_ids"][inter_lbl]
 
@@ -219,7 +221,7 @@ def agg_ninter_true(vals):
 	return [len(true_inter_lbls(vals)), ]
 
 
-@plotting_helpers.hist_aggregate("n-vox-inter-reco", bins=60, range=(0,300))
+@plotting_helpers.hist_aggregate("n-vox-inter-reco", bins=numpy.logspace(0, numpy.log10(1e6), 50), norm="unit")
 def agg_nvox_inter_reco(vals):
 
 	inter_nhit = []
@@ -232,18 +234,28 @@ def agg_nvox_inter_reco(vals):
 	return inter_nhit
 
 
-@plotting_helpers.hist_aggregate("n-vox-inter-true", bins=60, range=(0,300))
+@plotting_helpers.hist_aggregate("n-vox-inter-true", bins=numpy.logspace(0, numpy.log10(1e6), 50), norm="unit")
 def agg_nvox_inter_true(vals):
-	return [numpy.count_nonzero((vals["cluster_label"][:, 7] == inter_lbl) & (vals["cluster_label"][:, 4] > VOXEL_THRESHOLD_MEV))
-	        for inter_lbl in true_inter_lbls(vals)]
+	labels = true_inter_lbls(vals)
+	nvox = {inter_lbl : numpy.count_nonzero((vals["cluster_label"][:, 7] == inter_lbl) & (vals["cluster_label"][:, 4] > VOXEL_THRESHOLD_MEV))
+	        for inter_lbl in labels}
+#	print("hit counts by true interaction label:", nvox)
+	return list(nvox.values())
 
 
-@plotting_helpers.hist_aggregate("ungrouped-trueint-energy-frac", bins=27, range=(0,1.08))
-def agg_ungrouped_trueint_energy_frac(vals):
+@plotting_helpers.hist_aggregate("ungrouped-trueint-energy-frac-vs-trueEdep",
+                                 hist_dim=2, bins=(numpy.linspace(0, 5, 25),
+                                                   numpy.linspace(0, 1.08, 27)))
+def agg_ungrouped_trueint_energy_frac_vs_trueEdep(vals):
 
-	inter_unmatch_frac = []
+	inter_unmatch_frac = [[], []]
 	all_reco_vox = vals["input_data"][numpy.unique(numpy.concatenate(vals["inter_particles"]))]
 	for inter_lbl in true_inter_lbls(vals):
+		# the "-1" label corresponds to LEScatters (which won't otherwise be grouped into anything).
+		# almost all of its energy is not matched, *correctly*
+		if inter_lbl < 0:
+			continue
+
 		true_vox = vals["input_data"][true_inter_voxel_ids(vals, inter_lbl)]
 		true_E_sum = true_vox[:, 4].sum()
 		assert(true_E_sum > 0)
@@ -251,7 +263,14 @@ def agg_ungrouped_trueint_energy_frac(vals):
 		matched_vox_indices = find_matching_rows(numpy.array(all_reco_vox[:, :3]), numpy.array(true_vox[:, :3]))
 		matched_E_sum = all_reco_vox[matched_vox_indices][:, 4].sum()
 
-		inter_unmatch_frac.append(1 - matched_E_sum / true_E_sum)
+		inter_unmatch_frac[0].append(true_E_sum * 1e-3)  # convert to GeV
+		inter_unmatch_frac[1].append(1 - matched_E_sum / true_E_sum)
+
+		if matched_E_sum / true_E_sum < 0.2 and true_E_sum > 2000:
+			print("True interaction with high true E_dep (", true_E_sum, "MeV)\n"
+			      " and very little matched to reco interaction (", matched_E_sum, "):",
+			      vals["event_base"], inter_lbl)
+#			print("Matched voxels:", all_reco_vox[matched_vox_indices][:, :3], sep='\n')
 
 	return inter_unmatch_frac
 
@@ -311,13 +330,11 @@ def agg_recoint_purity(vals):
 
 		max_match_true_int = max(matched_energy, key=matched_energy.get)
 
-		# all "externally entering" interactions (i.e. rock muons)
-		# are lumped together into true interaction -1,
+		# all true "low-energy scatters" are lumped together into true interaction -1,
 		# so if they are the leading energy depositor to this reco interaction,
-		# we can't work out the purity (this reco interaction might have
-		# two rock muons in it...).
+		# we can't work out the purity (impossible to say which *actual* true nu int they came from).
 		# so we just skip any like that.
-		if max_match_true_int > 0:
+		if max_match_true_int >= 0:
 			reco_purity.append(matched_energy[max_match_true_int] / reco_vox[:, 4].sum())
 
 	return reco_purity
@@ -331,9 +348,10 @@ def BuildHists(data, hists):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (agg_ninter_reco, agg_ninter_true, agg_nvox_inter_reco, agg_nvox_inter_true,
-		               agg_ungrouped_trueint_energy_frac, agg_trueint_largest_matched_energy_frac,
+		               agg_ungrouped_trueint_energy_frac_vs_trueEdep, agg_trueint_largest_matched_energy_frac,
 		               agg_recoint_purity, agg_true_muon_grouped_frac, agg_true_muon_reco_int_match_count,
-		               agg_reco_int_muon_match_count):
+		               agg_reco_int_muon_match_count
+		               ):
 			agg_fn(evt_data, hists)
 
 
@@ -349,16 +367,16 @@ def PlotHists(hists, outdir, fmts):
 
 	nvox_inter_hists = {hname: hists[hname] for hname in ("n-vox-inter-reco", "n-vox-inter-true")}
 	if all(nvox_inter_hists.values()):
+		for hname in nvox_inter_hists:
+			hists[hname].Normalize()
 		fig, ax = plotting_helpers.overlay_hists(nvox_inter_hists,
 		                                         xaxis_label=r"Number of voxels in interaction ($E_{{vox}} > {}$ MeV)".format(VOXEL_THRESHOLD_MEV),
-		                                         yaxis_label=r"$\nu$ interactions",
+		                                         yaxis_label=r"Fraction of $\nu$ interactions",
 		                                         hist_labels={"n-vox-inter-reco": "Reco", "n-vox-inter-true": "True"})
-
+		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "n-vox-inter", outdir, fmts)
 
 	hist_labels = {
-		"ungrouped-trueint-energy-frac":       (r"Frac. true vis. $E_{dep}$ unmatched to reco int.",
-		                                        r"True $\nu$ interactions"),
 		"largest-trueint-energy-matched-frac": (r"Max frac. true vis. $E_{dep}$ matched to reco int.",
 		                                        r"True $\nu$ interactions"),
 		"recoint-purity-frac":                 (r"Reco. interaction purity",
@@ -376,3 +394,26 @@ def PlotHists(hists, outdir, fmts):
 			                                         xaxis_label=xlabel,
 			                                         yaxis_label=ylabel)
 			plotting_helpers.savefig(fig, plot, outdir, fmts)
+
+
+	hist2d_labels = {
+		"ungrouped-trueint-energy-frac-vs-trueEdep": (r"True vis. $E_{dep}$ in interaction (GeV)",
+		                                              r"Frac. true vis. $E_{dep}$ unmatched to reco int.",
+		                                              r"True $\nu$ interactions"),
+
+	}
+	for plot, (xlabel, ylabel, zlabel) in hist2d_labels.items():
+		if plot not in hists: continue
+
+		fig = plt.figure()
+		ax = fig.add_subplot()
+		h = hists[plot]
+		x, y = numpy.meshgrid(*h.bins)
+		im = ax.pcolormesh(x, y, h.data.T, cmap="Reds", norm=matplotlib.colors.LogNorm())
+		cbar = plt.colorbar(im)
+
+		ax.set_xlabel(xlabel)
+		ax.set_ylabel(ylabel)
+		cbar.set_label(zlabel)
+
+		plotting_helpers.savefig(fig, plot, outdir, fmts)
