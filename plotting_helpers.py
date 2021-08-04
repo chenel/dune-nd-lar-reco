@@ -58,6 +58,9 @@ def hist_aggregate(hist_name, hist_dim=1, norm=None, **hist_args):
 	and returns an array of values to be histogrammed (if 1D histogram)
 	or two arrays of values to be histogrammed (if 2D).
 
+	The function may also return a dictionary of arrays (per above)
+	to indicate that the histograms are of the same value but split into subsamples.
+
 	By default creates 1D histogram.  If 2D is desired pass hist_dim=2.
 
 	Arguments to numpy.histogram() (e.g., 'bins', 'range') may be specified as keyword arguments.
