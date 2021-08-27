@@ -1,3 +1,4 @@
+import functools
 import itertools
 import numpy
 import os.path
@@ -113,8 +114,42 @@ def hist_aggregate(hist_name, hist_dim=1, norm=None, **hist_args):
 	return decorator
 
 
-def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={}, **kwargs):
+def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={}, stack=[], **kwargs):
+	"""
+	Draw histograms overlaid on the same axis.
+
+	:param hists:  dict of {name: plotting_helpers.Hist} with histograms to overlay
+	:param xaxis_label: x-axis label to use.
+	:param xaxis_label: y-axis label to use.
+	:param hist_labels: legend labels for histograms in {name: label} format
+	:param stack: [list of [list of old names]] specifying histograms from 'hists' to add together (order matters: bottom to top).
+	:param kwargs: other arguments to pass to matplotlib.pyplot.axis.step()
+	:return: matplotlib.pyplot.Figure and Axis objects in case you want to modify them further
+
+	"""
 	fig, ax = plt.subplots()
+
+	# first build stacks where requested
+	flat_stack = list(itertools.chain(*stack))
+	if len(flat_stack) > 0:
+		dups = set(l for l in flat_stack if flat_stack.count(l) > 1)
+		assert len(dups) == 0, "Histogram(s) %s were included in multiple stacks, but it can only go in one" % dups
+	bottoms = {}
+	for hist_name_list in stack:
+		assert isinstance(hist_name_list, list), "overlay_hists stack: Expecting a list of lists but found instead type %s.  Is your list too shallow?" % type(hist_name_list)
+		# if there aren't at least two, no point in stacking
+		if len(hist_name_list) < 2:
+			continue
+		unknown_hists = [h for h in hist_name_list if h not in hists]
+		assert len(unknown_hists) == 0, "Unknown histogram(s) passed to overlay_hists 'stack' keyword: " + str(unknown_hists)
+		assert functools.reduce(lambda a, b: numpy.array_equal(a, b), (hists[h].bins for h in hist_name_list)), "Histograms to stack must have same bin edges..."
+
+		# swap out the previous histograms with versions that have the running sum of the stack
+		running_sum = numpy.zeros_like(hists[hist_name_list[0]].data)
+		for i, hname in enumerate(hist_name_list):
+			bottoms[hname] = numpy.copy(running_sum)
+			running_sum = running_sum + hists[hname].data
+
 	for hname, h in hists.items():
 		this_kwargs = {}
 		for key, val in kwargs.items():
@@ -123,9 +158,13 @@ def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={},
 					this_kwargs[key] = val[hname]
 			else:
 				this_kwargs[key] = val
-		ax.step(x=h.bins[:-1], y=h.data, where="post", label=hist_labels[hname] if hname in hist_labels else None, **this_kwargs)
+		if hname in flat_stack:
+			ax.bar(x=h.bins[:-1] + numpy.diff(h.bins)*0.5, height=h.data, width=numpy.diff(h.bins), bottom=bottoms[hname], alpha=0.5,
+			       label=hist_labels[hname] if hname in hist_labels else None, **this_kwargs)
+		else:
+			ax.step(x=h.bins[:-1], y=h.data, where="post", label=hist_labels[hname] if hname in hist_labels else None, **this_kwargs)
 	#			ax.bar(h.bins[:-1], h.data, width=numpy.diff(h.bins), fill=False, label="True" if "true" in hname else "Reco")
-		ax.margins(x=0)  # eliminate the whitespace between the x-axis and the first bin
+			ax.margins(x=0)  # eliminate the whitespace between the x-axis and the first bin
 	for axname in ("x", "y"):
 		axlabel = locals()[axname + "axis_label"]
 		if axlabel:
