@@ -20,6 +20,15 @@ TRUE_MUON_MERGE_FRAC = 0.2
 
 VOXEL_THRESHOLD_MEV = 0.25
 
+# what's the volume inside of which events should begin in order to be "fiducial vertex"?
+FIDUCIAL_EXTENTS = [
+	# Chris says active volume is 714 x 300 x 507.4 cm^3.
+	# I got the ranges themselves by doing some histogramming...
+	[-350, 350],
+	[-150, 150],
+	[410, 920],
+]
+
 
 def find_matching_rows(a1, a2, mask_only=False):
 	""" Find the indices of rows of 2D array a1 that match to rows of 2D array a2
@@ -63,10 +72,80 @@ def true_inter_lbls(vals):
 	return vals["true_inter_ids"]
 
 
+def part_is_fiducial(particle):
+	return all(low_extent <= coord <= high_extent for (coord, (low_extent, high_extent)) in
+	           zip((particle.x(), particle.y(), particle.z()), FIDUCIAL_EXTENTS))
+
+def is_true_inter_fid_vtx(vals, inter_lbl):
+	""" Determine whether a given true interaction has a fiducial vertex
+
+	    :param inter_lbl:  The true interaction label of interest
+	    :return:  bool answering the question
+	"""
+
+	# it would be much better to use the particle info in the "cluster_label" product.
+	# unfortunately that doesn't give us any way of knowing which is the *start* of particles,
+	# only which voxels go with which particle.
+	# so we use the raw particle list.
+	if "is_true_inter_fid_vtx" not in vals:
+		is_fid = {}
+		for p in vals["particles_raw"]:
+			if p.creation_process() != "primary":
+				continue
+			inter_id = p.interaction_id()
+			if inter_id not in is_fid:
+				is_fid[inter_id] = part_is_fiducial(p)
+
+		# there won't be any true particles with interaction -1
+		# (that's the one all the LEScatter voxels get grouped to).
+		# I guess we call them "non-fiducial"?
+		is_fid[-1] = False
+
+		vals["is_true_inter_fid_vtx"] = is_fid
+
+	assert inter_lbl in vals["is_true_inter_fid_vtx"], "Couldn't find interaction %d in list.  Known interactions: %s" % (inter_lbl, list(vals["is_true_inter_fid_vtx"].keys()))
+	return vals["is_true_inter_fid_vtx"][inter_lbl]
+
+
+def is_true_muon_fid(vals, muon_cluster_group_id):
+	""" Determine whether a true muon cluster has a fiducial vertex
+
+	    :param muon_cluster_group_id:  The true muon cluster id (use group_id()!) of interest
+	    :return:  bool answering the question
+	"""
+
+	key = "true_muon_fid_by_id"
+
+	if key not in vals:
+		muons_are_fid = {}
+
+		for p in vals["particles_raw"]:
+			if abs(p.pdg_code()) == 13:
+				muons_are_fid[p.group_id()] = part_is_fiducial(p)
+
+		vals[key] = muons_are_fid
+
+	if muon_cluster_group_id not in vals[key]:
+		print("muon fid clusters:", vals[key])
+		print("There is no true muon cluster in spill with group id: %d" % muon_cluster_group_id)
+		part = None
+		for p in vals["particles_raw"]:
+			if p.group_id() == muon_cluster_group_id:
+				part = p
+				break
+		if part:
+			print("That particle is has pdg:", part.pdg_code())
+		else:
+			print("In fact, there's no particle with that group id at all!")
+		assert False
+
+	return vals[key][muon_cluster_group_id]
+
+
 def true_inter_voxel_ids(vals, inter_lbl):
 	"""  Get a list of the indices of voxels in "input_data" that match to the given true interaction label.
 
-		:param inter_lbl   The true interaction label of interest
+		:param inter_lbl:   The true interaction label of interest
 		:return: array of indices for voxels in vals["input_data"] """
 
 	if "true_inter_voxel_ids" not in vals:
@@ -178,8 +257,12 @@ def agg_true_muon_reco_int_match_count(vals):
 	"""
 	true_muon_recoint_matches = true_muon_reco_matches(vals)
 
-	return [sum(1 if frac >= TRUE_MUON_SPLIT_FRAC else 0 for frac in mu_match_fracs.values())
-	        for mu_match_fracs in true_muon_recoint_matches.values()]
+	match_count_by_fid = {"fid": [], "nonfid": []}
+	for mu_clus_id, match_fracs in true_muon_recoint_matches.items():
+		key = "fid" if is_true_muon_fid(vals, mu_clus_id) else "nonfid"
+		match_count_by_fid[key].append(sum(1 if frac >= TRUE_MUON_SPLIT_FRAC else 0 for frac in match_fracs.values()))
+
+	return match_count_by_fid
 
 
 @plotting_helpers.hist_aggregate("true-muon-grouped-frac", bins=27, range=(0, 1.08))
@@ -190,7 +273,12 @@ def agg_true_muon_grouped_frac(vals):
 	"""
 	true_muon_recoint_matches = true_muon_reco_matches(vals)
 
-	return [sum(mu_match_fracs.values()) for mu_match_fracs in true_muon_recoint_matches.values()]
+	matches_by_fid = {"fid": [], "nonfid": []}
+	for mu_clus_id, match_fracs in true_muon_recoint_matches.items():
+		key = "fid" if is_true_muon_fid(vals, mu_clus_id) else "nonfid"
+		matches_by_fid[key].append(sum(match_fracs.values()))
+
+	return matches_by_fid
 
 
 @plotting_helpers.hist_aggregate("reco-int-muon-match-count", bins=10, range=(0,10))
@@ -212,13 +300,15 @@ def agg_reco_int_muon_match_count(vals):
 
 @plotting_helpers.hist_aggregate("n-inter-reco", bins=50, range=(0,100))
 def agg_ninter_reco(vals):
-#	print(vals["inter_group_pred"])
 	return [len(numpy.unique(vals["inter_group_pred"])),]
 
 
 @plotting_helpers.hist_aggregate("n-inter-true", bins=50, range=(0,100))
 def agg_ninter_true(vals):
-	return [len(true_inter_lbls(vals)), ]
+	ninter_by_fid = {"fid": [0,], "nonfid": [0,]}
+	for lbl in true_inter_lbls(vals):
+		ninter_by_fid["fid" if is_true_inter_fid_vtx(vals, lbl) else "nonfid"][0] += 1
+	return ninter_by_fid
 
 
 @plotting_helpers.hist_aggregate("n-vox-inter-reco", bins=numpy.logspace(0, numpy.log10(1e6), 50), norm="unit")
@@ -240,7 +330,10 @@ def agg_nvox_inter_true(vals):
 	nvox = {inter_lbl : numpy.count_nonzero((vals["cluster_label"][:, 7] == inter_lbl) & (vals["cluster_label"][:, 4] > VOXEL_THRESHOLD_MEV))
 	        for inter_lbl in labels}
 #	print("hit counts by true interaction label:", nvox)
-	return list(nvox.values())
+	nvox_by_fid = {"fid": [], "nonfid": []}
+	for lbl, count in nvox.items():
+		nvox_by_fid["fid" if is_true_inter_fid_vtx(vals, lbl) else "nonfid"].append(count)
+	return nvox_by_fid
 
 
 @plotting_helpers.hist_aggregate("ungrouped-trueint-energy-frac-vs-trueEdep",
@@ -248,13 +341,15 @@ def agg_nvox_inter_true(vals):
                                                    numpy.linspace(0, 1.08, 27)))
 def agg_ungrouped_trueint_energy_frac_vs_trueEdep(vals):
 
-	inter_unmatch_frac = [[], []]
+	inter_unmatch_frac = {"fid": [[], []], "nonfid": [[], []]}
 	all_reco_vox = vals["input_data"][numpy.unique(numpy.concatenate(vals["inter_particles"]))]
 	for inter_lbl in true_inter_lbls(vals):
 		# the "-1" label corresponds to LEScatters (which won't otherwise be grouped into anything).
 		# almost all of its energy is not matched, *correctly*
 		if inter_lbl < 0:
 			continue
+
+		key = "fid" if is_true_inter_fid_vtx(vals, inter_lbl) else "nonfid"
 
 		true_vox = vals["input_data"][true_inter_voxel_ids(vals, inter_lbl)]
 		true_E_sum = true_vox[:, 4].sum()
@@ -263,8 +358,8 @@ def agg_ungrouped_trueint_energy_frac_vs_trueEdep(vals):
 		matched_vox_indices = find_matching_rows(numpy.array(all_reco_vox[:, :3]), numpy.array(true_vox[:, :3]))
 		matched_E_sum = all_reco_vox[matched_vox_indices][:, 4].sum()
 
-		inter_unmatch_frac[0].append(true_E_sum * 1e-3)  # convert to GeV
-		inter_unmatch_frac[1].append(1 - matched_E_sum / true_E_sum)
+		inter_unmatch_frac[key][0].append(true_E_sum * 1e-3)  # convert to GeV
+		inter_unmatch_frac[key][1].append(1 - matched_E_sum / true_E_sum)
 
 		if matched_E_sum / true_E_sum < 0.2 and true_E_sum > 2000:
 			print("True interaction with high true E_dep (", true_E_sum, "MeV)\n"
@@ -278,7 +373,7 @@ def agg_ungrouped_trueint_energy_frac_vs_trueEdep(vals):
 @plotting_helpers.hist_aggregate("largest-trueint-energy-matched-frac", bins=27, range=(0,1.08))
 def agg_trueint_largest_matched_energy_frac(vals):
 
-	inter_match_frac = []
+	inter_match_frac = {"fid": [], "nonfid": []}
 #	print("There are", len(vals["input_data"]), "total voxels in this spill")
 	for idx, inter_lbl in enumerate(true_inter_lbls(vals)):
 		# this is the true label for *all* externally-entering stuff.
@@ -305,7 +400,7 @@ def agg_trueint_largest_matched_energy_frac(vals):
 
 			max_matched_E = max(max_matched_E, matched_E)
 
-		inter_match_frac.append(max_matched_E / true_E_sum)
+		inter_match_frac["fid" if is_true_inter_fid_vtx(vals, inter_lbl) else "nonfid"].append(max_matched_E / true_E_sum)
 
 	return inter_match_frac
 
@@ -313,7 +408,7 @@ def agg_trueint_largest_matched_energy_frac(vals):
 @plotting_helpers.hist_aggregate("recoint-purity-frac", bins=27, range=(0,1.08))
 def agg_recoint_purity(vals):
 
-	reco_purity = []
+	reco_purity = {"fid": [], "nonfid": []}
 	for inter in numpy.unique(vals["inter_group_pred"]):
 		inter_vox_ids = reco_inter_voxel_ids(vals, inter)
 		reco_vox = vals["input_data"][inter_vox_ids]
@@ -335,7 +430,8 @@ def agg_recoint_purity(vals):
 		# we can't work out the purity (impossible to say which *actual* true nu int they came from).
 		# so we just skip any like that.
 		if max_match_true_int >= 0:
-			reco_purity.append(matched_energy[max_match_true_int] / reco_vox[:, 4].sum())
+			hist = "fid" if is_true_inter_fid_vtx(vals, max_match_true_int) else "nonfid"
+			reco_purity[hist].append(matched_energy[max_match_true_int] / reco_vox[:, 4].sum())
 
 	return reco_purity
 
@@ -356,23 +452,38 @@ def BuildHists(data, hists):
 
 
 def PlotHists(hists, outdir, fmts):
-	ninter_hists = {hname: hists[hname] for hname in ("n-inter-reco", "n-inter-true")}
+	ninter_hists = {hname: hists[hname] for hname in hists if hname.startswith("n-inter")}
 	if all(ninter_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(ninter_hists,
 		                                         xaxis_label=r"$\nu$ interaction multiplicity",
 		                                         yaxis_label="Spills",
-		                                         hist_labels={"n-inter-reco": "Reco", "n-inter-true": "True"})
+		                                         hist_labels={hname: "Reco" if hname.endswith("reco") else
+                                                              ("True non-fiducial" if hname.endswith("nonfid") else
+	                                                          "True fiducial") for hname in ninter_hists})
 
 		plotting_helpers.savefig(fig, "n-inter", outdir, fmts)
 
-	nvox_inter_hists = {hname: hists[hname] for hname in ("n-vox-inter-reco", "n-vox-inter-true")}
+	nvox_inter_hists = {hname: hists[hname] for hname in hists if hname.startswith("n-vox-inter")}
 	if all(nvox_inter_hists.values()):
+
+		# since these will be stacked we need to normalize them in a special way
+		truth_hists = [h for h in nvox_inter_hists if "true" in h]
+		truth_sum = sum(hists[h].data.sum() for h in truth_hists)
+		for h in truth_hists:
+			hist_sum = hists[h].data.sum()
+			if hist_sum > 0:
+				hists[h].norm = truth_sum / hist_sum
+
+
 		for hname in nvox_inter_hists:
 			hists[hname].Normalize()
 		fig, ax = plotting_helpers.overlay_hists(nvox_inter_hists,
 		                                         xaxis_label=r"Number of voxels in interaction ($E_{{vox}} > {}$ MeV)".format(VOXEL_THRESHOLD_MEV),
 		                                         yaxis_label=r"Fraction of $\nu$ interactions",
-		                                         hist_labels={"n-vox-inter-reco": "Reco", "n-vox-inter-true": "True"})
+		                                         stack=[[hname for hname in nvox_inter_hists if "true" in hname],],
+		                                         hist_labels={hname: "Reco" if hname.endswith("reco") else
+		                                                             ("True non-fiducial" if hname.endswith("nonfid") else
+			                                                         "True fiducial") for hname in nvox_inter_hists})
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "n-vox-inter", outdir, fmts)
 
@@ -389,10 +500,18 @@ def PlotHists(hists, outdir, fmts):
 		                                        "Reco. interactions"),
 	}
 	for plot, (xlabel, ylabel) in hist_labels.items():
-		if plot in hists:
-			fig, ax = plotting_helpers.overlay_hists({plot: hists[plot]},
-			                                         xaxis_label=xlabel,
-			                                         yaxis_label=ylabel)
+		this_plot_hists = [h for h in hists if h.startswith(plot)]
+		if len(this_plot_hists) > 0:
+			kwargs = {
+				"hists": {h: hists[h] for h in this_plot_hists},
+				"xaxis_label": xlabel,
+				"yaxis_label": ylabel,
+			}
+			if any(h.endswith("nonfid") for h in this_plot_hists):
+				kwargs["stack"] = [[h for h in this_plot_hists if h.endswith("fid")],]  # i.e., both "_fid" and "_nonfid"
+				kwargs["hist_labels"] = {h:       "True non-fiducial" if h.endswith("nonfid")
+				                             else "True fiducial" for h in this_plot_hists}
+			fig, ax = plotting_helpers.overlay_hists(**kwargs)
 			plotting_helpers.savefig(fig, plot, outdir, fmts)
 
 
@@ -403,17 +522,20 @@ def PlotHists(hists, outdir, fmts):
 
 	}
 	for plot, (xlabel, ylabel, zlabel) in hist2d_labels.items():
-		if plot not in hists: continue
+		this_plot_hists = [h for h in hists if h.startswith(plot)]
+		if len(this_plot_hists) == 0:
+			continue
 
-		fig = plt.figure()
-		ax = fig.add_subplot()
-		h = hists[plot]
-		x, y = numpy.meshgrid(*h.bins)
-		im = ax.pcolormesh(x, y, h.data.T, cmap="Reds", norm=matplotlib.colors.LogNorm())
-		cbar = plt.colorbar(im)
+		for subplot in this_plot_hists:
+			fig = plt.figure()
+			ax = fig.add_subplot()
+			h = hists[subplot]
+			x, y = numpy.meshgrid(*h.bins)
+			im = ax.pcolormesh(x, y, h.data.T, cmap="Reds", norm=matplotlib.colors.LogNorm())
+			cbar = plt.colorbar(im)
 
-		ax.set_xlabel(xlabel)
-		ax.set_ylabel(ylabel)
-		cbar.set_label(zlabel)
+			ax.set_xlabel(xlabel)
+			ax.set_ylabel(ylabel)
+			cbar.set_label(zlabel)
 
-		plotting_helpers.savefig(fig, plot, outdir, fmts)
+			plotting_helpers.savefig(fig, subplot, outdir, fmts)
