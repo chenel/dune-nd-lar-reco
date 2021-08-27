@@ -24,12 +24,21 @@ class Hist:
 		if self.norm is None:
 			return
 
-		if self.norm not in ("density", "unit"):
+		if self.norm not in ("density", "unit") and not isinstance(self.norm, (int, float)):
 			raise ValueError("Unknown normalization: '%s'" % self.norm)
 
 		self.data = self.data / numpy.array(numpy.diff(self.bins), float)
 		if self.norm == "unit":
-			self.data = self.data / self.data.sum()
+			norm_factor = self.data.sum()
+		elif isinstance(self.norm, (int, float)):
+			assert self.norm > 0
+			norm_factor = self.data.sum() * self.norm
+		else:
+			norm_factor = 1.0
+
+		if norm_factor != 1.0:
+			self.data = self.data / norm_factor
+
 		self.norm = None  # don't allow it to be done multiple times
 
 def req_vars_hist(var_names):
