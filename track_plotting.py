@@ -597,6 +597,9 @@ def PlotHists(hists, outdir, fmts):
 			if column_sum > 0:
 				h.data[column, :] *= 1./column_sum
 
+		if h.data.sum() == 0:
+			continue
+
 		fig = plt.figure()
 		ax = fig.add_subplot()
 		x, y = numpy.meshgrid(*h.bins)
