@@ -130,7 +130,7 @@ Evaluating the models on `.larcv.root` files is similar to [training](#1-trainin
 Sample invocation:
 
 ```shell
-python3 RunChain.py --config_file config.inference.fullchain.yaml \
+python3 RunChain.py --config_file config.inference.fullchain-pileup.yaml \
                     --model_file $data/dune/nd/nd-lar-reco/train/track+intergnn-1400evs-1000Kits-batch8/snapshot-99.ckpt \
                     --batch_size 1 
                     --input_file $data/dune/nd/nd-lar-reco/supera/geom-20210405-pileup/FHC.1000015.larcv.root \
