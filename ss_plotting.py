@@ -9,7 +9,7 @@ import plotting_helpers
 @plotting_helpers.hist_aggregate("vox-E", bins=numpy.logspace(numpy.log10(0.01), numpy.log10(10), 50))
 def agg_voxE_reco(vals):
 #	print(vals["segmentation"])
-	print(vals["input_data"][numpy.argmax(vals["segmentation"], axis=1) == 1][:, 4])
+#	print(vals["input_data"][numpy.argmax(vals["segmentation"], axis=1) == 1][:, 4])
 	reco_labels = numpy.argmax(vals["segmentation"], axis=1)
 	return { "label=" + plotting_helpers.SHAPE_LABELS[label]: vals["input_data"][reco_labels == label][:, 4]
 	         for label in plotting_helpers.SHAPE_LABELS }
