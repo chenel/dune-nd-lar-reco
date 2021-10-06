@@ -24,6 +24,7 @@ model:
   name: uresnet_ppn_chain
   modules:
     ppn:
+      freeze: False
       num_strides: 7   # needs to match UResNet.  (allows PPN to understand its input)
       filters: 16      # ditto
       num_classes: 5   # ditto
