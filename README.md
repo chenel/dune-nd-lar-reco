@@ -4,7 +4,7 @@
 
   *Original author*:               J. Wolcott  <[jwolcott@fnal.gov](mailto:jwolcott@fnal.gov)>
   
-  *Last update to this document*:  August 2021
+  *Last update to this document*:  October 2021
 
 ----------------------------------------------------------------------         
 
@@ -91,12 +91,13 @@ However, if you need to batch-produce `.larcv.root` files from `edep-sim` output
 
 ### Hardware requirements
 
-At present, the later stages of the chain (the GNNs) tend to be relatively memory-hungry and fairly slow to train.  (An update to mlreco3d that is slated to be released soon should improve this performance substantially, however.)  Because of this, you will likely find it difficult to train those models using a GPU with less than 20-25 GB of video RAM.
+At present, the later stages of the chain (the GNNs) tend to be relatively memory-hungry and fairly slow to train.  (An update to mlreco3d that is in the process of being released should improve this performance substantially in the near future, however.)  Because of this, you will likely find it difficult to train those models using a GPU with less than 20-25 GB of video RAM.
 
 The UResNet+PPN network does not suffer from these issues.
 
 ### Running the training
-Though training can be done straightforwardly in a Jupyter notebook (as in the tutorials), I find it convenient to have a driver script that can be run from the command line with switches to easily override various configuration options.  The `TrainChain.py` script in this package serves that purpose.   Pass the `--help` flag to it to see what options it supports.
+Though training can be done straightforwardly in a Jupyter notebook (as in the tutorials), I find it convenient to have a driver script that can be run from the command line with switches to easily override various configuration options.  Instead of clobbering the `run.py` that comes with mlreco3d with everything I wanted, I wrote my own scripts.
+For training, `TrainChain.py` is my driver.   Pass the `--help` flag to it to see what options it supports.
 
 Example invocation, specifying config, input `.larcv.root` file, directory for output:
 ```shell
@@ -130,7 +131,7 @@ Evaluating the models on `.larcv.root` files is similar to [training](#1-trainin
 Sample invocation:
 
 ```shell
-python3 RunChain.py --config_file config.inference.fullchain-pileup.yaml \
+python3 RunChain.py --config_file configs/config.inference.fullchain-pileup.yaml \
                     --model_file $data/dune/nd/nd-lar-reco/train/track+intergnn-1400evs-1000Kits-batch8/snapshot-99.ckpt \
                     --batch_size 1 
                     --input_file $data/dune/nd/nd-lar-reco/supera/geom-20210405-pileup/FHC.1000015.larcv.root \
