@@ -19,11 +19,14 @@ import plotting_helpers
 SUMMARIZER_COLUMNS = {}
 
 TRACK_LABEL = [k for k, v in plotting_helpers.SHAPE_LABELS.items() if "Track" in v][0]
+SHOWER_LABEL = [k for k, v in plotting_helpers.SHAPE_LABELS.items() if "Shower" in v][0]
 
 # max distance between track end and voxels points considered for the track-end vector
 ENDPOINT_DISTANCE = 20 # cm
 MIN_COS_OPEN_ANGLE = 1 - math.cos(math.radians(30))
 
+# how far can a "shower" PPN point be from a shower fragment before it is no longer considered associated?
+MAX_SHW_PPN_OFFSET = 1  # in cm. this is ~the diagonal distance of 2 corner-to-corner voxels
 
 def SummarizerRunner(summarize_fns_names, datasets):
     """
@@ -118,8 +121,7 @@ def track_end_dir(voxels, dists_to_end, endpoints):
     # relative to the (end-start) vector.
     cos_open_angles = numpy.sum(vox_displ_to_end * v, axis=1)  # take dot product to determine cos(opening angles)
     end_voxels = voxels[voxidxs_close_to_end[
-        numpy.nonzero((0 <= cos_open_angles) & (cos_open_angles >= MIN_COS_OPEN_ANGLE))[
-            0]]]  # keep voxels that are within fixed opening angle
+        numpy.nonzero((0 <= cos_open_angles) & (cos_open_angles >= MIN_COS_OPEN_ANGLE))[0]]]  # keep voxels that are within fixed opening angle
     if len(end_voxels) <= 1:
         return v
 
@@ -139,15 +141,73 @@ def track_end_dir(voxels, dists_to_end, endpoints):
     return dir_vec
 
 
+@summarizer(columns=["shw_start_x", "shw_start_y", "shw_start_z",
+                     "shw_dir_x", "shw_dir_y", "shw_dir_z",
+                     "shw_visE"])
+def summarize_showers(input_data, reco_output):
+    """
+     Summarize shower information.
+     :param input_data:   List-of-dicts in mlreco3d-unwrapped format corresponding to parsed input for a single event.
+     :param reco_output:  List-of-dicts in mlreco3d-unwrapped format corresponding to output of reconstruction for the same event.
+     :return: array of shower information with columns as shown in decorator.  (also stored in hdf5 annotation.)
+    """
+    showers_out = []
+
+    shw_indices = numpy.unique(reco_output["shower_group_pred"])
+    for i, shw_index in enumerate(shw_indices):
+        voxel_indices = numpy.concatenate([frag for idx, frag in enumerate(reco_output["shower_fragments"]) if reco_output["shower_group_pred"][idx] == shw_index])
+        voxels = input_data["input_data"][voxel_indices][:, :3]
+
+        shw_ppn_points =  reco_output["ppn_post"][:, :3][reco_output["ppn_post"][:, -1] == SHOWER_LABEL]
+        dists_to_ppn = numpy.sum(scipy.spatial.distance.cdist(voxels, shw_ppn_points), axis=1)
+        dists_to_ppn_sel = dists_to_ppn[dists_to_ppn < MAX_SHW_PPN_OFFSET]
+
+        # if there are no PPN points close enough, use the lowest z
+        if len(dists_to_ppn_sel) == 0:
+            closest_ppn_idx = numpy.argmin(voxels[:, 2])
+        else:
+            closest_ppn_idx = numpy.argmin(dists_to_ppn == numpy.min(dists_to_ppn_sel))
+
+        shw_start = voxels[closest_ppn_idx]
+
+        # compute the principal components of the shower voxels.
+        # use the largest eigenvector to determine their direction
+        centered = voxels - numpy.sum(voxels, axis=0) / len(voxels)
+        cov = numpy.cov(centered.T)  # covariance of the (recentered) voxel positions
+        lmbda, e = numpy.linalg.eig(cov)  # eigenvalues & eigenvectors of the covariance matrix
+        max_ev_idx = numpy.argmax(lmbda)
+        dir_vec = numpy.sqrt(lmbda[max_ev_idx]) * e[:, max_ev_idx]
+
+        # the shower direction should be the direction where
+        # the vectors from the PPN point to the hits
+        # are parallel (rather than antiparallel) to it
+        vox_displ_to_start = voxels - shw_start  # subtract the endpoint from all the candidate voxels to get displacements
+        proj = numpy.sum(vox_displ_to_start * dir_vec, axis=1)
+        if numpy.count_nonzero(proj < 0) > len(proj /2):  # if the eigenvector points the wrong way, flip it
+            dir_vec *= -1
+        dir_vec = dir_vec / numpy.linalg.norm(dir_vec)
+
+        # finally, how much Evis was in this shower?
+        shw_visE = [input_data["input_data"][voxel_indices][:, -1].sum(),]
+
+        showers_out.append(numpy.concatenate([shw_start, dir_vec, shw_visE]))
+
+    ret = []
+    if len(showers_out) > 0:
+        ret = numpy.row_stack(showers_out)
+    return ret
+
+
 @summarizer(columns=["trk_start_x", "trk_start_y", "trk_start_z",
                      "trk_end_x", "trk_end_y", "trk_end_z",
-                     "trk_end_dir_x", "trk_end_dir_y", "trk_end_dir_z"])
+                     "trk_end_dir_x", "trk_end_dir_y", "trk_end_dir_z",
+                     "trk_visE"])
 def summarize_tracks(input_data, reco_output):
     """
       Summarize track information.
-    :param input_data:   List-of-dicts in mlreco3d-unwrapped format corresponding to parsed input for a single event.
-    :param reco_output:  List-of-dicts in mlreco3d-unwrapped format corresponding to output of reconstruction for the same event.
-    :return: array of track information with columns as shown in decorator.  (also stored in hdf5 annotation.)
+      :param input_data:   List-of-dicts in mlreco3d-unwrapped format corresponding to parsed input for a single event.
+      :param reco_output:  List-of-dicts in mlreco3d-unwrapped format corresponding to output of reconstruction for the same event.
+      :return: array of track information with columns as shown in decorator.  (also stored in hdf5 annotation.)
     """
     tracks_out = []
 
@@ -184,7 +244,12 @@ def summarize_tracks(input_data, reco_output):
 
         # finally, figure out its direction at the end of the track.
         dir_vec = track_end_dir(voxels, dists[endpoint2_idx if start_idx == 0 else endpoint1_idx], endpoints)
-        tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], dir_vec]))
+
+        # for tracks that don't wind up being the muon candidate,
+        # we'll also want to know their energy deposited.
+        trk_visE = [input_data["input_data"][voxel_indices][:, -1].sum(),]
+
+        tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], dir_vec, trk_visE]))
 
     ret = []
     if len(tracks_out):
