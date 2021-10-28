@@ -32,8 +32,8 @@ python3 -u RunChain.py --config_file $app/dune/nd/dune-nd-lar-reco/configs/confi
                        --model_file $data/dune/nd/nd-lar-reco/train/uresnet+ppn-380Kevs-50Kits-batch32/snapshot-23999.ckpt \
                        --batch_size 1 \
                        --input_file $data/dune/nd/nd-lar-reco/supera/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.larcv.root \
-                       --output_file $data/dune/nd/nd-lar-reco/reco-out/neutrino.${SLURM_ARRAY_TASK_ID}.reco.npz \
-                       --summary_hdf5 $data/dune/nd/nd-lar-reco/reco-out/neutrino.${SLURM_ARRAY_TASK_ID}.summary.h5
+                       --output_file $data/dune/nd/nd-lar-reco/reco-out/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.reco.npz \
+                       --summary_hdf5 $data/dune/nd/nd-lar-reco/reco-out/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.summary.h5
 EOF
 chmod +x $script
 
