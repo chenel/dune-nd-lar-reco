@@ -83,12 +83,12 @@ ana::Var kNonMuonCandTotalTrkVisE([](const caf::SRProxy * sr) -> float
 
   // tracks are meant to be sorted in descending order (longest first),
   // so skip the first one
-  return std::accumulate(sr->ndlar.tracks.begin(), sr->ndlar.tracks.end(), -sr->ndlar.tracks[0].Evis,
-                         [](double E, const caf::SRTrackProxy & tr)
-                         {
-                           return E + tr.Evis / 1e3; // convert to GeV
-                           return E + tr.Evis / 1e3; // convert to GeV
-                         });
+  float totalVisE = 0;
+  for (std::size_t idx = 1; idx < sr->ndlar.ntracks; idx++)
+    totalVisE += sr->ndlar.tracks[idx].Evis * 1e-3; // convert to GeV
+
+//  std::cout << "total non-'mu' track visE = " << totalVisE << std::endl;
+  return totalVisE;
 });
 
 /// sum of visible energies of all showers in GeV
@@ -97,11 +97,12 @@ ana::Var kTotalShwVisE([](const caf::SRProxy * sr) -> float
   if (sr->ndlar.nshowers < 1)
     return 0.;
 
-  return std::accumulate(sr->ndlar.showers.begin(), sr->ndlar.showers.end(), 0,
-                         [](double E, const caf::SRShowerProxy & shw)
-                         {
-                           return E + shw.Evis / 1e3; // convert to GeV
-                         });
+  float totalVisE = 0;
+  for (const auto & shw : sr->ndlar.showers)
+    totalVisE += shw.Evis * 1e-3; // convert to GeV
+
+//  std::cout << "total shower visE: " << totalVisE;
+  return totalVisE;
 });
 
 // ------------------------------------
@@ -216,5 +217,6 @@ void NumuCCIncERes(const std::string & inputCAF, const std::string & outdir)
     else if (spec.NDimensions() == 2)
       spec.ToTH2(spec.POT())->DrawCopy("colz");
     c.SaveAs((outdir + "/" + specPair.first + ".png").c_str());
+    c.SaveAs((outdir + "/" + specPair.first + ".root").c_str());
   }
 }
