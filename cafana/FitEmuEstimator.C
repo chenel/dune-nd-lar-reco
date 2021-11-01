@@ -13,29 +13,6 @@
 
 const std::string HIST_LABEL = "RecoTrkLenVsTrueEmu";
 
-//// ------------------------------------
-//const std::map<std::string, ana::HistAxis> VARS_TO_PLOT
-//    {
-//        {"MuCandLen",               {"Muon candidate track length (cm)", ana::Binning::Simple(70, 0, 700), kMuonCandLen}},
-//        {"NonMuCandTotalTrkEvis",   {"Sum of non-muon-candidate track visible energy (GeV)", ana::Binning::Simple(60, 0, 3), kNonMuonCandTotalTrkVisE}},
-//        {"ShowerTotalEvis",         {"Sum of shower visible energy (GeV)", ana::Binning::Simple(60, 0, 3), kTotalShwVisE}},
-//
-//        {"NTracks",                 {"Track multiplicity", ana::Binning::Simple(15, 0, 15), kNTracks}},
-//
-//        // 2D plots
-//        {"Emu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
-//                                        "Muon candidate track length (cm)", ana::Binning::Simple(35, 0, 700), kMuonCandLen}},
-//
-//    };
-//
-//const std::map<std::string, ana::Cut>  CUTS
-//    {
-//        {"NoCut",         ana::kNoCut},
-//        {"Cont",          kIsOutputContained},
-//        {"NumuReco",      kHasMuCandTrack},
-//        {"NumuReco+Cont", kHasMuCandTrack && kIsOutputContained},
-//    };
-
 // ------------------------------------------------------------------------
 
 /// Assuming the 2D histogram is reco track length (y) vs. true muon energy (x),
