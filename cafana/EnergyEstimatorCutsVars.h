@@ -154,3 +154,24 @@ ana::Cut kHasAllContainedEnergy([](const caf::SRProxy * sr) -> bool
 
                                   return true;
                                 });
+
+// ------------------------------------
+
+// energy estimators:
+// use FitEmuEstimator.C and FitEnuEstimator.C to find the coeffs
+
+/// Estimates muon energy in GeV, using longest track's range
+ana::Var kRecoEmuFromTrkLen([](const caf::SRProxy * sr) -> float
+{
+  if (sr->ndlar.ntracks < 1)
+    return -999.;
+
+  return 0.0022 * kMuonCandLen(sr) + 0.19;  // note that kMuonCandLen returns length in cm
+//  return 0.0025 * kMuonCandLen(sr);  // note that kMuonCandLen returns length in cm
+});
+
+/// Total visible energy of reco tracks & showers
+ana::Var kRecoHadVisE([](const caf::SRProxy * sr) -> float
+{
+  return kNonMuonCandTotalTrkVisE(sr) + kTotalShwVisE(sr);
+});
