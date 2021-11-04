@@ -3,6 +3,7 @@
 #include "TCanvas.h"
 #include "TH1.h"
 #include "TH2.h"
+#include "TProfile.h"
 
 #include "CAFAna/Core/Spectrum.h"
 #include "CAFAna/Core/SpectrumLoader.h"
@@ -20,8 +21,14 @@ const std::map<std::string, ana::HistAxis> VARS_TO_PLOT
     {"NTracks",                 {"Track multiplicity", ana::Binning::Simple(15, 0, 15), kNTracks}},
 
     // 2D plots
-    {"Emu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
-                "Muon candidate track length (cm)", ana::Binning::Simple(35, 0, 700), kMuonCandLen}},
+    {"MuLenVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
+                           "Muon candidate track length (cm)", ana::Binning::Simple(35, 0, 700), kMuonCandLen}},
+
+    {"EmuVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
+                         "Reco muon energy (GeV)", ana::Binning::Simple(50, 0, 5), kRecoEmuFromTrkLen}},
+
+    {"EmuResidVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
+                              "(Reco E_{#mu} - true E_{#mu}) / true E_{#mu}", ana::Binning::Simple(41, -1, 1), (kRecoEmuFromTrkLen - kTrueMuE)/kTrueMuE}},
 
 };
 
@@ -31,7 +38,10 @@ const std::map<std::string, ana::Cut>  CUTS
     {"Cont",          kIsOutputContained},
     {"NumuReco",      kHasMuCandTrack},
     {"NumuReco+Cont", kHasMuCandTrack && kIsOutputContained},
+    {"NumuReco+Cont+Signal", kHasMuCandTrack && kIsOutputContained && (kHasTrueMu && kIsVtxContained && kHasAllContainedEnergy)}
 };
+
+// ------------------------------------------------------------------------
 
 
 // ------------------------------------------------------------------------
@@ -65,5 +75,25 @@ void NumuCCIncERes(const std::string & inputCAF, const std::string & outdir)
       spec.ToTH2(spec.POT())->DrawCopy("colz");
     c.SaveAs((outdir + "/" + specPair.first + ".png").c_str());
     c.SaveAs((outdir + "/" + specPair.first + ".root").c_str());
+  }
+
+  if (spectra.count("EmuResidVsTrueEmu_NumuReco+Cont") > 0)
+  {
+    ana::Spectrum & spec = spectra.at("EmuResidVsTrueEmu_NumuReco+Cont");
+    TH2 * h2 = spec.ToTH2(spec.POT());
+    TProfile * prof = h2->ProfileX("_pfx", 1, -1, "s");
+
+    TH1D h("resol", "resol", prof->GetNbinsX(), prof->GetXaxis()->GetXmin(), prof->GetXaxis()->GetXmax());
+    h.SetTitle(";True muon energy (GeV); RMS of (Reco E_{#mu} - True E_{#mu})/True E_{#mu}");
+    for (int bin = 1; bin <= h.GetNbinsX(); bin++)
+    {
+      h.SetBinContent(bin, prof->GetBinError(bin));
+      h.SetBinError(bin, 0);
+    }
+
+    c.Clear();
+    h.SetMarkerStyle(20);
+    h.Draw("p");
+    c.SaveAs((outdir + "/EmuResol.png").c_str());
   }
 }
