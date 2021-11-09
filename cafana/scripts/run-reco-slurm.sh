@@ -29,7 +29,7 @@ export PYTHONPATH="\$PYTHONPATH:$app/dune/nd/nd-lar-reco/lartpc_mlreco3d"
 cd $app/dune/nd/dune-nd-lar-reco/
 
 python3 -u RunChain.py --config_file $app/dune/nd/dune-nd-lar-reco/configs/config.inference.fullchain-singles.yaml \
-                       --model_file $data/dune/nd/nd-lar-reco/train/uresnet+ppn-380Kevs-50Kits-batch32/snapshot-23999.ckpt \
+                       --model_file $data/dune/nd/nd-lar-reco/train/track+showergnn-380Kevs-15Kits-batch32/snapshot-1499.ckpt \
                        --batch_size 1 \
                        --input_file $data/dune/nd/nd-lar-reco/supera/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.larcv.root \
                        --output_file $data/dune/nd/nd-lar-reco/reco-out/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.reco.npz \
