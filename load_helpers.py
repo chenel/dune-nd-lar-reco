@@ -122,6 +122,7 @@ def ProcessData(cfg, before=None, during=None, max_events=None):
 
 			if "metadata" in d:
 				convert_to_geom_coords(d, d["metadata"][0])
+				convert_to_geom_coords(o, d["metadata"][0])
 
 			handlers.watch.stop('iteration')
 			tsum += handlers.watch.time('iteration')
