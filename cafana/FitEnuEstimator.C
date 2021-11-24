@@ -21,12 +21,14 @@ const std::string HIST_LABEL = "RecoEhadVisVsTrueEnuMinusRecoEmu";
 TH1D ProfileHist(const TH2 * h)
 {
   TH1D profile("recoEmu_profiled", "", h->GetNbinsY(), h->GetYaxis()->GetXmin(), h->GetYaxis()->GetXmax());
-  profile.SetTitle(";Muon candidate track length (cm);True muon energy (GeV)");
+  profile.SetTitle(";Reco hadronic visible energy (GeV);True E_{#nu} - Reco E_{#mu} (GeV)");
   // we walk up the y-axis bins...
   for (int y = 1; y <= h->GetNbinsY(); y++)
   {
     TH1D * proj = h->ProjectionX(Form("proj_bin%d", y), y, y);
     profile.SetBinContent(y, proj->GetBinCenter(proj->GetMaximumBin()));
+    if (proj->Integral() == 0)
+      continue;
 
     // figure out the smallest interval that contains both ~68.2% of the distribution and the max.
     // we scan from the first bin up to the max bin
@@ -39,7 +41,7 @@ TH1D ProfileHist(const TH2 * h)
     if (cumul->GetBinCenter(cumul->GetNbinsX()) > 0)
       cumul->Scale(1. / cumul->GetBinContent(cumul->GetNbinsX()));
     std::cout << "after rescaling:" << std::endl;
-    std::cout << "For y bin " << y << "< cumulative distribution bins:" << std::endl;
+    std::cout << "For y bin " << y << ", cumulative distribution bins:" << std::endl;
     for (int i = 1; i <= cumul->GetNbinsX();  i++)
       std::cout << " " << cumul->GetBinContent(i) ;
     std::cout << std::endl;
@@ -62,12 +64,17 @@ TH1D ProfileHist(const TH2 * h)
         }
       }
     }
+    if (intervals.empty())
+    {
+      auto max = cumul->GetNbinsX();
+      intervals.emplace_back(cumul->GetBinLowEdge(max) + cumul->GetBinWidth(max) - cumul->GetBinLowEdge(1));
+    }
 
     // now find the smallest interval.
     // use a custom comparator because we want to ignore
     // intervals that didn't include the maximum,
     // which have interval size < 0
-    std::cout << "considering intervals:" << std::endl;
+    std::cout << "considering  " << intervals.size() << " intervals:" << std::endl;
     for (const auto & interval : intervals)
       std::cout << "  " << interval;
     std::cout << std::endl;
@@ -123,10 +130,12 @@ void FitDriver::DoFit()
   TCanvas c;
   prof.SetMarkerSize(10);
   prof.Draw("pe");
-//  TFitResultPtr fit = prof.Fit("pol1", "s");
-//  fit->Draw("same");
-//  TLatex text(25, 3, Form("E_{#mu}/GeV = %.2g L_{trk}/cm + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
-//  text.Draw();
+
+  TFitResultPtr fit = prof.Fit("pol1", "s");
+  TLatex text(0.15, 0.8, Form("E_{had}/GeV = %.2g E_{had}^{vis}/GeV + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
+  text.SetNDC();
+  text.Draw();
+
   this->SaveCanvasImg(c, "RecoEhadVis_prof_TrueEnuMinusRecoEmu");
 }
 
@@ -156,8 +165,8 @@ void FitEnuEstimator(const std::string & histFilePath, const std::string & outDi
   th2->Draw("colz");
   c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
 
-  //FitDriver f(outDir, th2);
-  //f.DoFit();
+  FitDriver f(outDir, th2);
+  f.DoFit();
 }
 
 // 3 arguments: requesting to make the hist file first, then fit
@@ -175,9 +184,9 @@ void FitEnuEstimator(const std::string & inputCAF, const std::string & histFileP
   ana::SaveTo(spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu, &outf, HIST_LABEL);
 
   TH2 * th2 = spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.ToTH2(spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.POT());
-  TCanvas c;
-  th2->Draw("colz");
-  c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
-  //FitDriver f(outDir, h);
-  //f.DoFit();
+//  TCanvas c;
+//  th2->Draw("colz");
+//  c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
+  FitDriver f(outDir, th2);
+  f.DoFit();
 }

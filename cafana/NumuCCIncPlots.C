@@ -62,6 +62,10 @@ const std::map<std::string, ana::HistAxis> VARS_TO_PLOT
 
     {"EmuResidVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
                            "(Reco E_{#mu} - true E_{#mu}) / true E_{#mu}", ana::Binning::Simple(41, -1, 1), (kRecoEmuFromTrkLen - kTrueMuE)/kTrueMuE}},
+    {"EnuResidVsTrueEnu", {"True neutrino energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueEnu,
+                          "(Reco E_{#mu} + Reco E_{had} - true E_{#nu}) / true E_{#nu}", ana::Binning::Simple(41, -1, 1), (kRecoEhadFromEhadVis + kRecoEmuFromTrkLen - kTrueEnu)/kTrueEnu}},
+    {"EnuResidVsTrueYbj", {"True inelasticity y_{Bj}",   ana::Binning::Simple(21, 0, 1.05), kTrueInel,
+                          "(Reco E_{#mu} + Reco E_{had} - true E_{#nu}) / true E_{#nu}", ana::Binning::Simple(41, -1, 1), (kRecoEhadFromEhadVis + kRecoEmuFromTrkLen - kTrueEnu)/kTrueEnu}},
 
 };
 
@@ -115,11 +119,13 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir)
 
   if (spectra.count("EmuResidVsTrueEmu_NTracks+RecoCont+Signal") > 0)
   {
+    c.Clear();
+
     ana::Spectrum & spec = spectra.at("EmuResidVsTrueEmu_NTracks+RecoCont+Signal");
     TH2 * h2 = spec.ToTH2(spec.POT());
-    TProfile * prof = h2->ProfileX("_pfx", 1, -1, "s");
+    TProfile * prof = h2->ProfileX("EmuResid_profx", 1, -1, "s");
 
-    TH1D h("resol", "resol", prof->GetNbinsX(), prof->GetXaxis()->GetXmin(), prof->GetXaxis()->GetXmax());
+    TH1D h("resol_emu", "resol", prof->GetNbinsX(), prof->GetXaxis()->GetXmin(), prof->GetXaxis()->GetXmax());
     h.SetTitle(";True muon energy (GeV); RMS of (Reco E_{#mu} - True E_{#mu})/True E_{#mu}");
     for (int bin = 1; bin <= h.GetNbinsX(); bin++)
     {
@@ -127,9 +133,30 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir)
       h.SetBinError(bin, 0);
     }
 
-    c.Clear();
     h.SetMarkerStyle(20);
     h.Draw("p");
     c.SaveAs((outdir + "/EmuResol.png").c_str());
   }
+
+  if (spectra.count("EnuResidVsTrueEnu_NTracks+RecoCont+Signal") > 0)
+  {
+    c.Clear();
+
+    ana::Spectrum & spec = spectra.at("EnuResidVsTrueEnu_NTracks+RecoCont+Signal");
+    TH2 * h2 = spec.ToTH2(spec.POT());
+    TProfile * prof = h2->ProfileX("EnuResid_profx", 1, -1, "s");
+
+    TH1D h("resol_Enu", "resol", prof->GetNbinsX(), prof->GetXaxis()->GetXmin(), prof->GetXaxis()->GetXmax());
+    h.SetTitle(";True neutrino energy (GeV); RMS of (Reco E_{#mu} + Reco E_{had} - true E_{#nu}) / true E_{#nu}");
+    for (int bin = 1; bin <= h.GetNbinsX(); bin++)
+    {
+      h.SetBinContent(bin, prof->GetBinError(bin));
+      h.SetBinError(bin, 0);
+    }
+
+    h.SetMarkerStyle(20);
+    h.Draw("p");
+    c.SaveAs((outdir + "/EnuResol.png").c_str());
+  }
+
 }
