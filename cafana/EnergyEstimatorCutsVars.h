@@ -47,10 +47,7 @@ ana::Var kTrueLepEndX = SIMPLEVAR(LepEndpoint.x);
 ana::Var kTrueLepEndY = SIMPLEVAR(LepEndpoint.y);
 ana::Var kTrueLepEndZ = SIMPLEVAR(LepEndpoint.z);
 
-ana::Var kNTracks([](const caf::SRProxy * sr) -> float
-                  {
-                    return sr->ndlar.ntracks;
-                  });
+ana::Var kNTracks = SIMPLEVAR(ndlar.ntracks);
 
 ana::Var kTrueMuE([](const caf::SRProxy * sr) -> float
                   {
@@ -60,9 +57,11 @@ ana::Var kTrueMuE([](const caf::SRProxy * sr) -> float
                     return sr->LepE;
                   });
 
-ana::Var kTrueEnu([](const caf::SRProxy * sr) -> float
+ana::Var kTrueEnu = SIMPLEVAR(Ev);
+
+ana::Var kTrueInel([](const caf::SRProxy * sr) -> float
                   {
-                    return sr->Ev;
+                    return 1. - sr->LepE / sr->Ev;
                   });
 
 ana::Var kTrueLepPDG = SIMPLEVAR(LepPDG);
@@ -222,6 +221,7 @@ ana::Var kRecoEmuFromTrkLen([](const caf::SRProxy * sr) -> float
   if (sr->ndlar.ntracks < 1)
     return -999.;
 
+  // output of FitEmuEstimator.C
   return 0.0023 * kMuonCandLen(sr) + 0.12;  // note that kMuonCandLen returns length in cm
 //  return 0.0025 * kMuonCandLen(sr);  // note that kMuonCandLen returns length in cm
 });
@@ -235,4 +235,11 @@ ana::Var kRecoHadVisE([](const caf::SRProxy * sr) -> float
   std::cout << "  --> sum = " << ret << std::endl;
 
   return ret;
+});
+
+/// Estimates reco Ehad from visible hadronic energy (non-muon tracks and any showers)
+ana::Var kRecoEhadFromEhadVis([](const caf::SRProxy * sr) -> float
+{
+  // output of FitEnuEstimator.C
+  return 1.3 * kRecoHadVisE(sr) + 0.34;
 });
