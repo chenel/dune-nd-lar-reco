@@ -8,13 +8,17 @@
 /// based on https://indico.fnal.gov/event/48610/#4-ml-reconstruction-update, p. 10
 const float MIN_TRACK_LENGTH = 100.0;  // cm
 
+/// correct for the offset subtracted by the CAFMaker...
+const float OFFSET[3] = {0., 5.5, 411.};
+//const float OFFSET[3] = {0., 0., 0.};
+
 /// these are from JW's explorations of simulated files.
 /// they are based on the bounds used for the LAr reconstruction,
 /// which extend just outside the active LAr volume,
 /// but brought back in 10cm on each side
-const float FID_VOL_LOW_EXTENT[3] = {-360, -150,  390};
-const float FID_VOL_HIGH_EXTENT[3] = {360,  150,  920};
-
+const float FID_VOL_LOW_EXTENT[3] = {-340, -150,  420};
+const float FID_VOL_HIGH_EXTENT[3] = {340,  75,  900};
+//(-350., 350.), (-217., 83.), (418., 914.)
 
 template <typename T>
 bool IsContained(const T & vec, const float * low_extent, const float * high_extent)
@@ -34,6 +38,14 @@ bool IsContained(const T & vec, const float * low_extent, const float * high_ext
 }
 
 // ------------------------------------
+using namespace ana;
+ana::Var kTrueVtxX = SIMPLEVAR(vtx_x);
+ana::Var kTrueVtxY = SIMPLEVAR(vtx_y);
+ana::Var kTrueVtxZ = SIMPLEVAR(vtx_z);
+
+ana::Var kTrueLepEndX = SIMPLEVAR(LepEndpoint.x);
+ana::Var kTrueLepEndY = SIMPLEVAR(LepEndpoint.y);
+ana::Var kTrueLepEndZ = SIMPLEVAR(LepEndpoint.z);
 
 ana::Var kNTracks([](const caf::SRProxy * sr) -> float
                   {
@@ -53,7 +65,46 @@ ana::Var kTrueEnu([](const caf::SRProxy * sr) -> float
                     return sr->Ev;
                   });
 
+ana::Var kTrueLepPDG = SIMPLEVAR(LepPDG);
+
 // ------------------------------------
+/// Returns (index, length) pair of the muon candidate (longest track) if there is one
+std::pair<int, float> MuonCand(const caf::SRProxy * sr)
+{
+  static std::pair<int, float> cached{-1, -1};
+  static std::tuple<int, int, int> cachedEvt{-1, -1, -1};
+  if (cachedEvt == std::make_tuple(sr->run, sr->subrun, sr->event))
+    return cached;
+
+  if (sr->ndlar.ntracks < 1)
+    return {-1, -1};
+
+  std::pair<std::size_t, float> longest = {-1, -1};
+  for (std::size_t idx = 0; idx < sr->ndlar.ntracks; idx++)
+  {
+    const caf::SRTrackProxy & tr = sr->ndlar.tracks[idx];
+    float length = caf::SRVector3D(tr.end.x - tr.start.x,
+                                   tr.end.y - tr.start.y,
+                                   tr.end.z - tr.start.z).Mag();
+    if (length > longest.second)
+      longest = {idx, length};
+  }
+  cachedEvt = std::make_tuple(sr->run, sr->subrun, sr->event);
+  cached = longest;
+
+  return longest;
+}
+
+#define MUON_VERTEX_VAR(VARNAME, COORD) ana::Var VARNAME([](const caf::SRProxy* sr) -> float { \
+  int idx; float len; \
+  std::tie(idx, len) = MuonCand(sr); \
+  if (idx < 0) return -9999.; \
+  return sr->ndlar.tracks[idx].start.COORD; \
+});
+
+MUON_VERTEX_VAR(kMuonCandVtxX, x);
+MUON_VERTEX_VAR(kMuonCandVtxY, y);
+MUON_VERTEX_VAR(kMuonCandVtxZ, z);
 
 ana::Var kMuonCandLen([](const caf::SRProxy * sr) -> float
                       {
@@ -61,22 +112,23 @@ ana::Var kMuonCandLen([](const caf::SRProxy * sr) -> float
                           return -999.;
 
                         // tracks are meant to be sorted in descending order (longest first)
-                        return caf::SRVector3D(sr->ndlar.tracks[0].end.x - sr->ndlar.tracks[0].start.x,
-                                               sr->ndlar.tracks[0].end.y - sr->ndlar.tracks[0].start.y,
-                                               sr->ndlar.tracks[0].end.z - sr->ndlar.tracks[0].start.z).Mag();
+                        return MuonCand(sr).second;
                       });
 
-/// sum of visible energies of all non-muon-candidate tracks (i.e. not longest one), in GeV
+/// sum of visible energies of all non-muon-candida.te tracks (i.e. not longest one), in GeV
 ana::Var kNonMuonCandTotalTrkVisE([](const caf::SRProxy * sr) -> float
                                   {
                                     if (sr->ndlar.ntracks < 2)
                                       return 0.;
 
-                                    // tracks are meant to be sorted in descending order (longest first),
-                                    // so skip the first one
+                                    // skip the muon candidate!
                                     float totalVisE = 0;
-                                    for (std::size_t idx = 1; idx < sr->ndlar.ntracks; idx++)
+                                    for (std::size_t idx = 0; idx < sr->ndlar.ntracks; idx++)
+                                    {
+                                      if (static_cast<int>(idx) == MuonCand(sr).first)
+                                        continue;
                                       totalVisE += sr->ndlar.tracks[idx].Evis * 1e-3; // convert to GeV
+                                    }
 
 //  std::cout << "total non-'mu' track visE = " << totalVisE << std::endl;
                                     return totalVisE;
@@ -109,7 +161,8 @@ const ana::Cut kHasTrueMu([](const caf::SRProxy * sr) -> bool
 // (2) is the vertex contained?
 const ana::Cut kIsVtxContained([](const caf::SRProxy * sr) -> bool
                                {
-                                 return IsContained(caf::SRVector3D{sr->vtx_x, sr->vtx_y, sr->vtx_z}, FID_VOL_LOW_EXTENT, FID_VOL_HIGH_EXTENT);
+                                 return IsContained(caf::SRVector3D{sr->vtx_x + OFFSET[0], sr->vtx_y + OFFSET[1], sr->vtx_z + OFFSET[2]},
+                                                    FID_VOL_LOW_EXTENT, FID_VOL_HIGH_EXTENT);
                                });
 
 // signal definition:
@@ -118,7 +171,10 @@ const ana::Cut kIsVtxContained([](const caf::SRProxy * sr) -> bool
 //       needs to include hadron part too
 const ana::Cut kIsOutputContained([](const caf::SRProxy * sr) -> bool
                                   {
-                                    return IsContained(sr->LepEndpoint, FID_VOL_LOW_EXTENT, FID_VOL_HIGH_EXTENT);
+                                    return IsContained(caf::SRVector3D{sr->LepEndpoint.x + OFFSET[0],
+                                                                       sr->LepEndpoint.y + OFFSET[1],
+                                                                       sr->LepEndpoint.z + OFFSET[2]},
+                                                       FID_VOL_LOW_EXTENT, FID_VOL_HIGH_EXTENT);
                                   });
 
 // ------------------------------------
@@ -166,12 +222,17 @@ ana::Var kRecoEmuFromTrkLen([](const caf::SRProxy * sr) -> float
   if (sr->ndlar.ntracks < 1)
     return -999.;
 
-  return 0.0022 * kMuonCandLen(sr) + 0.19;  // note that kMuonCandLen returns length in cm
+  return 0.0023 * kMuonCandLen(sr) + 0.12;  // note that kMuonCandLen returns length in cm
 //  return 0.0025 * kMuonCandLen(sr);  // note that kMuonCandLen returns length in cm
 });
 
 /// Total visible energy of reco tracks & showers
 ana::Var kRecoHadVisE([](const caf::SRProxy * sr) -> float
 {
-  return kNonMuonCandTotalTrkVisE(sr) + kTotalShwVisE(sr);
+  std::cout << "   non-mu track visE = " << kNonMuonCandTotalTrkVisE(sr) << std::endl;
+  std::cout << "   shower visE = " << kTotalShwVisE(sr) << std::endl;
+  float ret = kNonMuonCandTotalTrkVisE(sr) + kTotalShwVisE(sr);
+  std::cout << "  --> sum = " << ret << std::endl;
+
+  return ret;
 });
