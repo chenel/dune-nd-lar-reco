@@ -83,7 +83,7 @@ const std::map<std::string, ana::Cut>  CUTS
 // ------------------------------------------------------------------------
 // ------------------------------------------------------------------------
 
-void NumuCCIncERes(const std::string & inputCAF, const std::string & outdir)
+void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir)
 {
   ana::SpectrumLoader loader(inputCAF);
 
