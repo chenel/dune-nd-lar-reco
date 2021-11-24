@@ -1,4 +1,5 @@
 #include "TCanvas.h"
+#include "TF1.h"
 #include "TFitResult.h"
 #include "TLatex.h"
 #include "TH1.h"
@@ -125,9 +126,15 @@ void FitDriver::DoFit()
   TCanvas c;
   prof.SetMarkerSize(10);
   prof.Draw("pe");
+
   TFitResultPtr fit = prof.Fit("pol1", "s");
-//  fit->Draw("same");
-  TLatex text(25, 3, Form("E_{#mu}/GeV = %.2g L_{trk}/cm + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
+  TLatex text(0.15, 0.8, Form("E_{#mu}/GeV = %.2g L_{trk}/cm + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
+  text.SetNDC();
+
+//  TF1 f("linonly", "[0] * x");
+//  TFitResultPtr fit = prof.Fit(&f, "s");
+//  TLatex text(25, 3, Form("E_{#mu}/GeV = %.2g L_{trk}/cm ", fit->GetParams()[0]));
+
   text.Draw();
   this->SaveCanvasImg(c, "MuonTrkE_prof_TrueMuonE");
 }
