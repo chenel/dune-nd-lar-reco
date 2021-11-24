@@ -9,8 +9,7 @@
 const float MIN_TRACK_LENGTH = 100.0;  // cm
 
 /// correct for the offset subtracted by the CAFMaker...
-const float OFFSET[3] = {0., 5.5, 411.};
-//const float OFFSET[3] = {0., 0., 0.};
+const float OFFSET[3] = {0., 0., 0.};
 
 /// these are from JW's explorations of simulated files.
 /// they are based on the bounds used for the LAr reconstruction,
