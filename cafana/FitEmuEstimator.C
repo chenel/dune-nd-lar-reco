@@ -162,7 +162,7 @@ void FitEmuEstimator(const std::string & inputCAF, const std::string & histFileP
   ana::Spectrum spec_RecoTrkLen_vs_TrueEmu(loader,
                                            ana::HistAxis("True muon energy (GeV)", ana::Binning::Simple(50, 0, 5), kTrueMuE),
                                            ana::HistAxis("Muon candidate track length (cm)", ana::Binning::Simple(35, 0, 700), kMuonCandLen),
-                                           kHasAllContainedEnergy);
+                                           (kNTracks > 0 && kHasAllContainedEnergy) && (kHasTrueMu && kIsVtxContained && kIsOutputContained));
 
   loader.Go();
 

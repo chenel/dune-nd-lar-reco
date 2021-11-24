@@ -166,8 +166,8 @@ void FitEnuEstimator(const std::string & inputCAF, const std::string & histFileP
   ana::SpectrumLoader loader(inputCAF);
   ana::Spectrum spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu(loader,
                                                         ana::HistAxis("True E_{#nu} - Reco E_{#mu} (GeV)", ana::Binning::Simple(50, 0, 5), kTrueEnu - kRecoEmuFromTrkLen),
-                                                        ana::HistAxis("Reco hadronic visible energy (GeV)", ana::Binning::Simple(40, 0, 0.08), kRecoHadVisE),
-                                                         (kHasMuCandTrack && kIsOutputContained));
+                                                        ana::HistAxis("Reco hadronic visible energy (GeV)", ana::Binning::Simple(40, 0, 2), kRecoHadVisE),
+                                                        (kHasMuCandTrack && kHasAllContainedEnergy) && (kHasTrueMu && kIsVtxContained && kIsOutputContained));
 
   loader.Go();
 
