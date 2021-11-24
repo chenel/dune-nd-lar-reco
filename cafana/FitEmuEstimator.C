@@ -27,6 +27,8 @@ TH1D ProfileHist(const TH2 * h)
   {
     TH1D * proj = h->ProjectionX(Form("proj_bin%d", y), y, y);
     profile.SetBinContent(y, proj->GetBinCenter(proj->GetMaximumBin()));
+    if (proj->Integral() == 0)
+      continue;
 
     // figure out the smallest interval that contains both ~68.2% of the distribution and the max.
     // we scan from the first bin up to the max bin
