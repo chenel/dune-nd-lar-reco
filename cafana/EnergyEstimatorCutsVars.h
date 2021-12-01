@@ -104,6 +104,18 @@ MUON_VERTEX_VAR(kMuonCandVtxX, x);
 MUON_VERTEX_VAR(kMuonCandVtxY, y);
 MUON_VERTEX_VAR(kMuonCandVtxZ, z);
 
+#define MUON_END_VAR(VARNAME, COORD) ana::Var VARNAME([](const caf::SRProxy* sr) -> float { \
+  int idx; float len; \
+  std::tie(idx, len) = MuonCand(sr); \
+  if (idx < 0) return -9999.; \
+  return sr->ndlar.tracks[idx].end.COORD; \
+});
+
+MUON_END_VAR(kMuonCandEndX, x);
+MUON_END_VAR(kMuonCandEndY, y);
+MUON_END_VAR(kMuonCandEndZ, z);
+
+
 ana::Var kMuonCandLen([](const caf::SRProxy * sr) -> float
                       {
                         if (sr->ndlar.ntracks < 1)
@@ -148,6 +160,10 @@ ana::Var kTotalShwVisE([](const caf::SRProxy * sr) -> float
 
 // ------------------------------------
 
+ana::Var kNShowers = SIMPLEVAR(ndlar.nshowers);
+
+// ------------------------------------
+
 // signal definition:
 // (1) is there a true muon candidate in it?
 const ana::Cut kHasTrueMu([](const caf::SRProxy * sr) -> bool
@@ -174,6 +190,8 @@ const ana::Cut kIsOutputContained([](const caf::SRProxy * sr) -> bool
                                                                        sr->LepEndpoint.z + OFFSET[2]},
                                                        FID_VOL_LOW_EXTENT, FID_VOL_HIGH_EXTENT);
                                   });
+
+const ana::Cut kIsSignal = kHasTrueMu && kIsVtxContained && kIsOutputContained;
 
 // ------------------------------------
 
