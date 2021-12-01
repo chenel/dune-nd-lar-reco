@@ -3,6 +3,7 @@
 #include "TCanvas.h"
 #include "TH1.h"
 #include "TH2.h"
+#include "TLatex.h"
 #include "TProfile.h"
 
 #include "CAFAna/Core/Spectrum.h"
@@ -93,12 +94,17 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir)
 
   std::map<std::string, ana::Spectrum> spectra;
 
+  std::map<std::string, std::string> specToCutMap;   // because this is easier than working backwards from the spectrum name...
   for (const auto & cutPair : CUTS)
   {
     for (const auto &axisPair: VARS_TO_PLOT)
+    {
+      std::string specName = axisPair.first + "_" + cutPair.first;
       spectra.emplace(std::piecewise_construct,
-                      std::forward_as_tuple(axisPair.first + "_" + cutPair.first),
+                      std::forward_as_tuple(specName),
                       std::forward_as_tuple(loader, axisPair.second, cutPair.second));
+      specToCutMap.emplace(specName, cutPair.first);
+    }
   }
 
   loader.Go();
@@ -113,6 +119,12 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir)
       spec.ToTH1(spec.POT())->DrawCopy("hist");
     else if (spec.NDimensions() == 2)
       spec.ToTH2(spec.POT())->DrawCopy("colz");
+
+    TLatex cutLabel(0.9, 0.92, ("[" + specToCutMap.at(specPair.first) + "]").c_str());
+    cutLabel.SetNDC();
+    cutLabel.SetTextAlign(kVAlignBottom + kHAlignRight);
+    cutLabel.Draw();
+
     c.SaveAs((outdir + "/" + specPair.first + ".png").c_str());
     c.SaveAs((outdir + "/" + specPair.first + ".root").c_str());
   }
