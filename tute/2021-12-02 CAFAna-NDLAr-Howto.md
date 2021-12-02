@@ -92,11 +92,11 @@ $ ups list -aK+ root v6_22_08b
 
 Then to activate a particular version, one uses the `setup` command:
 ```bash
-setup "root" "v6_22_08d" -f "Linux64bit+3.10-2.17" -q "debug:e20:p392"
+setup "root" "v6_22_08b" -f "Linux64bit+3.10-2.17" -q "e20:p383b:prof"
 ```
 Note that generally the flavor can be autodetected by UPS, and the preceding command could just as well have been
 ```bash
-setup "root" "v6_22_08d" -q "debug:e20:p392"
+setup "root" "v6_22_08b" -q "e20:p383b:prof"
 ```
 
 ### What is a CAF?  (Where ~~does babby~~ do CAFs come from?)
@@ -232,9 +232,9 @@ You need to install a package of the updated `duneanaobj` in it for it to be use
 
 * **Get ready to build**:
     ```bash
-    . $DUNEANAOBJ_SRC/ups/setup_for_development -d e20:gv3
+    . $DUNEANAOBJ_SRC/ups/setup_for_development -p e20:gv3
     ```
-    The arguments here specify that I want a debug build (`-d`) and the qualifiers for GCC 9.3.0 in C++17 mode (`e20`) and GENIE version 3 (`gv3`).
+    The arguments here specify that I want a 'profile' build (`-o`)---which matches the type of build the version of ROOT that we set up was done with---and the qualifiers for GCC 9.3.0 in C++17 mode (`e20`) and GENIE version 3 (`gv3`).
     This should spit out a lot of output, but critically, the lines after `check this block for errors:` should not have anything in them:
     ```bash
     ----------- check this block for errors -----------------------
@@ -284,12 +284,12 @@ $ ups list -aK+ duneanaobj
 "duneanaobj" "v01_00_00" "Linux64bit+3.10-2.17" "c2:gv2:prof" "" 
 "duneanaobj" "v01_00_00" "Linux64bit+3.10-2.17" "c7:gv3:prof" "" 
 "duneanaobj" "v01_00_00" "Linux64bit+3.10-2.17" "debug:e17:gv2" "" 
-"duneanaobj" "testing" "Linux64bit+3.10-2.17" "debug:e20:gv3" ""   # <-- this is the new one.  it worked! 
+"duneanaobj" "testing" "Linux64bit+3.10-2.17" "e20:gv3:prof" ""   # <-- this is the new one.  it worked! 
 ```
 
 You can set up this newly installed, custom version of `duneanaobj` the same was as `root` in "Finding and setting up packages" under section 1 above:
 ```bash
-setup duneanaobj testing -q debug:e20:gv3
+setup duneanaobj testing -q e20:gv3:prof
 ```
 If it worked, you should now have some `$DUNEANAOBJ_*` environment variables that point to the install location in `$CUSTOM_UPS`:
 ```bash
@@ -306,7 +306,7 @@ You may find you are missing some of these variables, e.g.:
 ```bash
 $ printenv | grep DUNEANAOBJ
 DUNEANAOBJ_DIR=/dune/app/users/jwolcott/ups/duneanaobj/testing
-SETUP_DUNEANAOBJ=duneanaobj testing -f Linux64bit+3.10-2.17 -z /dune/app/users/jwolcott/ups -q debug:e20:gv3
+SETUP_DUNEANAOBJ=duneanaobj testing -f Linux64bit+3.10-2.17 -z /dune/app/users/jwolcott/ups -q e20:gv3:prof
 ```
 There is an issue with the `setup_for_development` script above that I haven't (yet) worked out which sometimes causes the special file in the `ups` directory that tells UPS how to do the `setup` to be truncated.
 In this case, you can simply copy-paste a corrected version that I have in my working area into your UPS installation:
@@ -350,7 +350,7 @@ However, in order to read the CAFs I've made, there are a few modifications nece
     CAFANA_INSTALL=/dune/app/users/jwolcott/cafana-ndlar
     
     cd $CAFANA_SRC_DIR/CAFAna
-    ./standalone_configure_and_build.sh -u -j 3 -I $CAFANA_INSTALL 
+    ./standalone_configure_and_build.sh --rdb -u -j 3 -I $CAFANA_INSTALL 
     ```
 
 To use it (I recommend starting a fresh shell, not continuing from the one you built it in), you'll just need to set up your `$PRODUCTS` and then use the `CAFAnaEnv.sh` script in the install directory:
