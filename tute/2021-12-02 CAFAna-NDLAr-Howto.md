@@ -389,15 +389,15 @@ You will need to edit them to change the paths they use to correspond to the CAF
 You'll probably also need to edit some of them (`demo0.C`, for instance) to actually write out images somewhere instead of expecting you to have an interactive session.
 
 Once you have the basics down, if you are in need of inspiration for what sort of things you can do, you can have a look at the macros I used to generate the plots included in the `Enu estimator physics slides` attached to the Indico event (see link at top of this doc).
-The code is in my personal GitHub repository in [the same directory as this Howto](https://github.com/chenel/dune-personal/tree/master/nd/nd-lar).
+The code is in a subdirectory of the GitHub repository that hosts my scripts for running the ND-LAr reco,
+in [the `cafana/` subdir](https://github.com/chenel/dune-nd-lar-reco/tree/main/cafana).
 
-If you like, you can clone it:
+If you like, you can clone this repo:
 ```bash
-cd /where/you/want/it
-git clone https://github.com/chenel/dune-personal.git jwolcott-dune-personal
-cd jwolcott-dune-personal/nd/nd-lar
+CODE_DIR=/dune/app/users/jwolcott/dune-nd-lar-reco
+git clone https://github.com/chenel/dune-nd-lar-reco.git $CODE_DIR
+cd $CODE_DIR/cafana
 ```
-(There's lots of other various DUNE-related stuff there, which you can peruse at your leisure, but this directory is the only one with anything relevant.)
 
 For instance, you can run the macro that makes most of the plots with:
 
