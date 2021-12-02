@@ -4,7 +4,7 @@ Jeremy Wolcott <jwolcott@fnal.gov>
 
 ## 0. Housekeeping
 * These notes go with a live session with a Zoom recording.  See [the Indico page](https://indico.fnal.gov/event/52169/).
-* The instructions here are only for folks who are interested in getting their hands dirty!  The CAF analysis for the CAFs I've made is work in progress, and stuff is sure to be broken. I've tried to compose instructions that will work to get you started, but if something is broken, you're agreeing to work on fixing it yourself, not just ask me for help. :)
+* The instructions here are only for folks who are interested in getting their hands dirty!  *The CAF analysis for the CAFs I've made is work in progress*, and stuff is sure to be broken. I've tried to compose instructions that will work to get you started, but if something is broken, you're agreeing to work on fixing it yourself, not just ask me for help. :)
 * The CAFs used for the demonstrations detailed below are currently in my user area:
     ```
     /dune/data/users/jwolcott/nd-lar-reco/caf/geom-20210623/*.root
