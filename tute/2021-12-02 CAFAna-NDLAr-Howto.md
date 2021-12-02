@@ -231,6 +231,9 @@ You need to install a package of the updated `duneanaobj` in it for it to be use
     ```
 
 * **Get ready to build**:
+
+    **If you haven't already set up ROOT in your shell** (look above for the `setup root v6_22_08b...` command), **do that now.**
+
     ```bash
     . $DUNEANAOBJ_SRC/ups/setup_for_development -p e20:gv3
     ```
@@ -367,6 +370,14 @@ source $CAFANA_INSTALL/CAFAnaEnv.sh
 ## 4. Example CAFAna scripts
 
 At this point, you're set up to run CAFAna with the CAFs!
+Remember that in any shell where you want to run CAFAna, you need to (adapting the paths below as necessary)
+```bash
+export CUSTOM_UPS="/dune/app/users/$USER/ups"
+export PRODUCTS="$PRODUCTS:$CUSTOM_UPS"
+export CAFANA_INSTALL=/dune/app/users/jwolcott/cafana-ndlar
+source $CAFANA_INSTALL/CAFAnaEnv.sh
+```
+before you try it.
 
 If you are new to CAFAna,  I first recommend having a look at the CAFAna 'tutorial' macros, which live in [`CAFAna/tute`](https://github.com/DUNE/lblpwgtools/tree/master/CAFAna/tute).
 You can run them, e.g.:
