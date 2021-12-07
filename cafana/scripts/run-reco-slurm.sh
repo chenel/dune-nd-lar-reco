@@ -12,8 +12,11 @@
 #SBATCH --mem-per-gpu=40gb
 #SBATCH --array=0-99
 
+
 app=/cluster/tufts/minos/jwolcott/app
 data=/cluster/tufts/minos/jwolcott/data
+
+dunesoft=$app/dune/nd/nd-lar-reco
 
 script="`mktemp $data/scratch/singularity-scripts/run-mlreco-XXXXXXX.sh`"
 if [ -z "$script" ]; then
@@ -24,11 +27,11 @@ echo "writing script to tempfile: $script"
 cat << EOF > $script
 #!/bin/bash
 
-. /cluster/home/jwolco01/scripts/larcv
-export PYTHONPATH="\$PYTHONPATH:$app/dune/nd/nd-lar-reco/lartpc_mlreco3d"
-cd $app/dune/nd/dune-nd-lar-reco/
+. $HOME/scripts/larcv
+export PYTHONPATH="\$PYTHONPATH:$dunesoft/lartpc_mlreco3d"
+cd $dunesoft/dune-nd-lar-reco/ || exit 1
 
-python3 -u RunChain.py --config_file $app/dune/nd/dune-nd-lar-reco/configs/config.inference.fullchain-singles.yaml \
+python3 -u RunChain.py --config_file $dunesoft/dune-nd-lar-reco/configs/config.inference.fullchain-singles.yaml \
                        --model_file $data/dune/nd/nd-lar-reco/train/track+showergnn-380Kevs-15Kits-batch32/snapshot-1499.ckpt \
                        --batch_size 1 \
                        --input_file $data/dune/nd/nd-lar-reco/supera/geom-20210623/neutrino.${SLURM_ARRAY_TASK_ID}.larcv.root \
@@ -39,7 +42,7 @@ chmod +x $script
 
 module load singularity/3.6.1
 singularity exec --nv -B $HOME -B $app -B $data \
-                $data/singularity-images/ub20.04-cuda11.0-pytorch1.7.1-larndsim.sif \
+                $sing_images/ub20.04-cuda11.0-pytorch1.7.1-larndsim.sif \
                 bash $script \
   || exit $?
 
