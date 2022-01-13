@@ -71,7 +71,7 @@ The software necessary for the `edep-sim`-to-`larcv2` process is kept in the [`l
 There is a driver script, [`run_supera.py`](https://github.com/chenel/larcv2/tree/edepsim-formattruth/larcv/app/Supera/run_supera.py).  Usage:
 ```shell
 # could also be `python3` depending on your installation
-python supera.py <config.cfg> edep_sim.root [edep_sim2.root ...]
+python run_supera.py <config.cfg> edep_sim.root [edep_sim2.root ...]
 ```
 
 Configuration files (used in place of the `<config.cfg>` placeholder) configure the operation.  You'll probably want to use `supera-ndlar.cfg`, which is set up for the ND-LAr geometry.
