@@ -370,7 +370,6 @@ def agg_muontrk_longest_completeness_vs_muonVisE(vals):
 		return []
 
 
-
 @plotting_helpers.hist_aggregate("mu-trk-mostEmu-completeness-vs-truemuKE",
                                  hist_dim=2,
                                  bins=(numpy.linspace(0, 1500, 30),
@@ -391,7 +390,6 @@ def agg_muontrk_completeness_vs_truemuKE(vals):
 		return [[true_mu_KE,], [calc_vals["largest_matched_muonE"] / calc_vals["total_muon_E"],]]
 	else:
 		return []
-
 
 
 @plotting_helpers.hist_aggregate("mu-trk-found", bins=30, range=(0, 1500))
@@ -475,6 +473,32 @@ def agg_muontrk_purity_vs_muonVisE(vals):
 
 	return [[true_mu_voxE,], [matched_voxE/longest_track_voxE,]]
 
+
+
+@plotting_helpers.hist_aggregate("truemu-visE-vs-len",
+                                 hist_dim=2,
+                                 bins=(numpy.linspace(0, 1500, 30),
+                                       numpy.linspace(0, 2.0, 40)))
+def agg_truemu_visE_vs_len(vals):
+	"""
+	Plot true muon energy deposited as a function of true track length.
+	"""
+
+	true_mu_vox = true_muon_vox(vals)
+	if len(true_mu_vox) < 1:  # no visible muon in this event anyway
+		return []
+	true_mu_voxE = true_mu_vox[:, 3].sum() * 1e-3
+
+	truth_track_lens = truth_track_lengths_cm(vals)
+	true_mu_len = truth_track_lens[numpy.abs(truth_track_pids(vals)) == 13]
+	if len(true_mu_len) != 1:
+		return []
+
+	# print("true_mu_len:", true_mu_len[0])
+	# print("true_mu_voxE:", true_mu_voxE)
+
+	return [[true_mu_len[0],], [true_mu_voxE,]]
+
 #------------------------------------------------------
 
 @plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
@@ -490,7 +514,7 @@ def BuildHists(data, hists):
 		               agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
 		               agg_muontrk_longest_completeness_vs_muonVisE,
 		               agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
-		               agg_truemu_vs_truemuE,
+		               agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
 		               agg_muontrk_purity_vs_muonVisE):
 			agg_fn(evt_data, hists)
 
@@ -521,6 +545,20 @@ def PlotHists(hists, outdir, fmts):
 		                                         hist_labels={"trk-length-reco": "Reco", "trk-length-true": "True"})
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "trk-len", outdir, fmts)
+
+	if "truemu-visE-vs-len" in hists:
+		h = hists["truemu-visE-vs-len"]
+		fig = plt.figure()
+		ax = fig.add_subplot()
+		x, y = numpy.meshgrid(*h.bins)
+		im = ax.pcolormesh(x, y, h.data.T, cmap="Reds")
+		plt.colorbar(im)
+
+		ax.set_xlabel("True muon track length in active vol. (cm)")
+		ax.set_ylabel("True visible energy deposited (GeV)")
+
+		plotting_helpers.savefig(fig, "truemu-visE-vs-len", outdir, fmts)
+
 
 	if hists["delta-longest-trk-vs-length"]:
 		h = hists["delta-longest-trk-vs-length"]
