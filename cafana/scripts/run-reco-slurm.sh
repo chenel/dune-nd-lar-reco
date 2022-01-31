@@ -5,18 +5,34 @@
 #SBATCH --mail-user=jeremy.wolcott@tufts.edu     # Where to send mail
 #SBATCH --time=03:00:00               # Time limit hrs:min:sec
 #SBATCH --output=/cluster/tufts/minos/jwolcott/data/scratch/job-output/mlreco_%j_%A-%a.out
-#SBATCH --error=/cluster/tufts/minos/jwolcott/data/scratch/job-output/mlreco_%j_%A-%a.err
 #SBATCH --partition=ccgpu
 #SBATCH --gpus=a100:1
 #SBATCH --cpus-per-task=3
 #SBATCH --mem-per-gpu=40gb
 #SBATCH --array=0-99
 
+function set_default()
+{
+  varname="$1"
+  val="$2"
+  if [ -z "${!varname}" ]; then
+    printf -v "$varname" '%s' "$val"
+    echo "WARNING: var \$${varname} was not specified in shell.  Using default: $val"
+  fi
+}
 
-app=/cluster/tufts/minos/jwolcott/app
-data=/cluster/tufts/minos/jwolcott/data
+# hopefully the user has passed these using `--export` to `sbatch`
+set_default app /cluster/tufts/minos/jwolcott/app
+set_default data /cluster/tufts/minos/jwolcott/data
+set_default sing_images /cluster/tufts/minos/jwolcott/data/singularity-images
 
-dunesoft=$app/dune/nd/nd-lar-reco
+if [ -d "$app/dune/nd/nd-lar-reco" ]; then
+  dunesoft=$app/dune/nd/nd-lar-reco
+else
+  dunesoft=$app
+fi
+
+echo "Assuming DUNE software is located in: $dunesoft"
 
 script="`mktemp $data/scratch/singularity-scripts/run-mlreco-XXXXXXX.sh`"
 if [ -z "$script" ]; then
