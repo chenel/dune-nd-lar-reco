@@ -114,7 +114,8 @@ if __name__ == "__main__":
 	hists = {}
 	for data in Load(args.input_file):
 		for mod_name, module in modules.items():
-			hists[mod_name] = {}
+			if mod_name not in hists:
+				hists[mod_name] = {}
 			getattr(module, "BuildHists")(data, hists[mod_name])
 
 	for mod_name, module in modules.items():
