@@ -6,6 +6,7 @@ import numpy
 import scipy.spatial
 
 import plotting_helpers
+import track_functions
 
 TRACK_LABEL = 1
 
@@ -27,6 +28,7 @@ PDG = {
 	2212: "Proton",
 }
 
+TWOD_ANGLES_BINS = dict( bins=61, range=(0, 183) )
 
 def completeness(vals):
 	keys = ("total_muon_E", "largest_matched_muonE", "longesttrk_matched_muonE")
@@ -67,7 +69,35 @@ def completeness(vals):
 
 def convert_pixel_to_geom(val, metadata):
 	# assume cubical, for now...
+	assert metadata.size_voxel_x() == metadata.size_voxel_y() == metadata.size_voxel_z()
 	return val * metadata.size_voxel_x()  # note these will be in cm
+
+
+def twod_angle(normal_axis, reference_axis, track_dir):
+	if track_dir is None:
+		return None
+
+	# first project into the 2D plane
+	normal_axis = normal_axis / numpy.linalg.norm(normal_axis)  # assume that user wasn't pathological and didn't pass zero-length vector...
+	reference_axis = reference_axis / numpy.linalg.norm(reference_axis)
+	projected_track = track_dir - numpy.dot(track_dir, normal_axis) * normal_axis
+	if numpy.count_nonzero(projected_track) < 1:
+		return None
+#	print("projected_track:", projected_track)
+
+	# then take dot product with reference axis
+	cos_theta = numpy.dot(projected_track, reference_axis) / numpy.linalg.norm(projected_track)
+
+	if cos_theta is None or cos_theta < -1 or cos_theta > 1:
+		print("projected_track:", projected_track)
+		print("reference_axis:", reference_axis)
+		print("wacky cos_theta =", cos_theta)
+		exit(1)
+
+	ang = numpy.rad2deg(numpy.arccos(cos_theta))
+#	print("angle:", ang)
+	return ang
+
 
 
 def longest_track_voxels(vals):
@@ -127,6 +157,54 @@ def longest_track_purity_vars(vals):
 		vals["overlap_vox_E"] = overlap_vox_E
 
 	return vals["true_mu_vox_E"], vals["longest_trk_E"], vals["overlap_vox_E"]
+
+
+def reco_track_begin_dir(trk_index, vals):
+	product_name = "track_begin_dir"
+	if product_name in vals and trk_index in vals[product_name]:
+		return vals[product_name][trk_index]
+
+	if product_name not in vals:
+		vals[product_name] = {}
+
+	voxels = track_functions.track_voxel_coords(trk_index, vals, vals)
+
+	endpoints = track_functions.track_endpoints(trk_index, vals, vals)
+
+	# use the "track end direction" machinery to find the track *beginning* direction
+	# (look from the "beginning" point)
+	dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
+	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]]
+	dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
+	dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
+
+	vals[product_name][trk_index] = dir_vec
+
+	return vals[product_name][trk_index]
+
+
+def reco_tracks_2d_angles(reference_axis, normal_axis, vals):
+	""" Return the angles of all tracks within a 2D plane (defined by its normal vector) relative to a reference axis. """
+
+#	track_indices = numpy.unique(vals["track_group_pred"])
+
+	angles = []
+#	for trk_index in track_indices:
+	trk_lengths = reco_track_lengths_cm(vals)
+	if len(trk_lengths) < 1:
+		return []
+#	longest_track_idx = numpy.nanargmax(trk_lengths)
+	track_indices = numpy.nonzero(trk_lengths >= 100)[0]
+#	print("track_indices:", track_indices)
+
+	for trk_index in track_indices:
+		track_dir = reco_track_begin_dir(trk_index, vals)
+
+		theta = twod_angle(normal_axis, reference_axis, track_dir)
+		angles += [theta,] if theta is not None else []
+
+	return angles
+
 
 def reco_track_lengths_cm(vals):
 	""" return the lengths of all reco track clusters in units of cm """
@@ -190,6 +268,37 @@ def true_muon_vox(vals):
 #		print("true muon voxels:", vals["true_muon_voxels"])
 
 	return vals["true_muon_voxels"]
+
+
+def true_muon_begin_dir(vals):
+	product_name = "true_muon_begin_dir"
+	if product_name in vals:
+		return vals[product_name]
+
+	if product_name not in vals:
+		vals[product_name] = {}
+
+	voxels = true_muon_vox(vals)[:, :3]
+	if voxels.size == 0:
+		vals[product_name] = None
+		return vals[product_name]
+
+	trk_index = -13   # forged
+	endpoints = track_functions.track_endpoints(trk_index, vals, vals, voxels)
+
+	# use the "track end direction" machinery to find the track *beginning* direction
+	# (look from the "beginning" point)
+#	print("voxels:", voxels)
+#   print("endpoints:", endpoints)
+	dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
+#	print("output of == test:", voxels == endpoints[0])
+	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]]
+	dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
+	dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
+
+	vals[product_name] = dir_vec
+
+	return vals[product_name]
 
 
 def matched_voxels(arr1, arr2):
@@ -280,6 +389,18 @@ def agg_trklen_true(vals):
 @plotting_helpers.hist_aggregate("trk-length-reco", bins=numpy.logspace(-1, numpy.log10(3000), 50))
 def agg_trklen_reco(vals):
 	return reco_track_lengths_cm(vals)
+
+
+@plotting_helpers.hist_aggregate("trk-thetax-reco", **TWOD_ANGLES_BINS)
+def agg_trkanglex_reco(vals):
+	# theta_x = angle w.r.t. x-axis within x-z plane
+	return reco_tracks_2d_angles(reference_axis=numpy.array([1, 0, 0]), normal_axis=([0, 1, 0]), vals=vals)
+
+
+@plotting_helpers.hist_aggregate("trk-thetay-reco", **TWOD_ANGLES_BINS)
+def agg_trkangley_reco(vals):
+	# theta_y = angle w.r.t. y-axis within y-z plane
+	return reco_tracks_2d_angles(reference_axis=numpy.array([0, 1, 0]), normal_axis=([1, 0, 0]), vals=vals)
 
 
 @plotting_helpers.hist_aggregate("trk-length-truepid", bins=numpy.logspace(0, numpy.log10(3000), 50))
@@ -474,6 +595,23 @@ def agg_muontrk_purity_vs_muonVisE(vals):
 	return [[true_mu_voxE,], [matched_voxE/longest_track_voxE,]]
 
 
+@plotting_helpers.hist_aggregate("truemu-thetax", **TWOD_ANGLES_BINS)
+def agg_truemu_thetax(vals):
+	"""
+	Plot the angle w.r.t. x-axis within x-z plane
+	"""
+	mu_angle = twod_angle(reference_axis=numpy.array([1, 0, 0]), normal_axis=([0, 1, 0]), track_dir=true_muon_begin_dir(vals))
+	return [mu_angle,] if mu_angle is not None else []
+
+
+@plotting_helpers.hist_aggregate("truemu-thetay", **TWOD_ANGLES_BINS)
+def agg_truemu_thetay(vals):
+	"""
+	Plot the angle w.r.t. y-axis within y-z plane
+	"""
+	mu_angle =  twod_angle(reference_axis=numpy.array([0, 1, 0]), normal_axis=([1, 0, 0]), track_dir=true_muon_begin_dir(vals))
+	return [mu_angle,] if mu_angle is not None else []
+
 
 @plotting_helpers.hist_aggregate("truemu-visE-vs-len",
                                  hist_dim=2,
@@ -501,43 +639,48 @@ def agg_truemu_visE_vs_len(vals):
 
 #------------------------------------------------------
 
-@plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
-                                 "event_base"])
+# @plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
+#                                  "event_base", "ppn_post"])
+@plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "cluster_label", "ppn_post"])
 def BuildHists(data, hists):
 	for evt_idx in range(len(data["particles_raw"])):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
-		for agg_fn in (agg_trklen_reco, agg_trklen_true,
-		               agg_ntracks_reco, agg_ntracks_true,
-		               agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
-		               agg_dtrklen_vs_trklen, agg_trklen_truepid,
-		               agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
-		               agg_muontrk_longest_completeness_vs_muonVisE,
-		               agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
-		               agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
-		               agg_muontrk_purity_vs_muonVisE):
+		for agg_fn in (
+				       # agg_trklen_reco, agg_trklen_true,
+		               # agg_ntracks_reco, agg_ntracks_true,
+		               agg_trkanglex_reco, agg_trkangley_reco,
+		               agg_truemu_thetax, agg_truemu_thetay,
+		               # agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
+		               # agg_dtrklen_vs_trklen, agg_trklen_truepid,
+		               # agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
+		               # agg_muontrk_longest_completeness_vs_muonVisE,
+		               # agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
+		               # agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
+		               # agg_muontrk_purity_vs_muonVisE
+		):
 			agg_fn(evt_data, hists)
 
 
 def PlotHists(hists, outdir, fmts):
 	# n-tracks plots are simple true-reco comparisons
-	ntracks_hists = {hname: hists[hname] for hname in ("n-tracks-reco", "n-tracks-true")}
-	if all(ntracks_hists.values()):
+	ntracks_hists = {hname: hists[hname] for hname in ("n-tracks-reco", "n-tracks-true") if hname in hists}
+	if len(ntracks_hists) > 0 and all(ntracks_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(ntracks_hists,
 		                                         xaxis_label="'Track' cluster multiplicity (length > %.1f cm)" % TRACK_THRESHOLD,
 		                                         hist_labels={"n-tracks-reco": "Reco", "n-tracks-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-tracks", outdir, fmts)
 
-	ntracks_longtrk_hists = {hname: hists[hname] for hname in ("n-tracks-with-long-track-reco", "n-tracks-with-long-track-true")}
-	if all(ntracks_hists.values()):
+	ntracks_longtrk_hists = {hname: hists[hname] for hname in ("n-tracks-with-long-track-reco", "n-tracks-with-long-track-true") if hname in hists}
+	if len(ntracks_longtrk_hists) > 0 and all(ntracks_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(ntracks_longtrk_hists,
 		                                         xaxis_label="'Track' multiplicity (evts. with length > %.1f cm)" % LONG_TRACK,
 		                                         hist_labels={"n-tracks-with-long-track-reco": "Reco", "n-tracks-with-long-track-true": "True"})
 
 		plotting_helpers.savefig(fig, "n-tracks-longtrkcut", outdir, fmts)
 
-	trklen_hists = {hname: hists[hname] for hname in ("trk-length-reco", "trk-length-true")}
+	trklen_hists = {hname: hists[hname] for hname in ("trk-length-reco", "trk-length-true") if hname in hists}
 	if all(trklen_hists.values()):
 		fig, ax = plotting_helpers.overlay_hists(trklen_hists,
 		                                         xaxis_label="'Track' length (cm)",
@@ -545,6 +688,23 @@ def PlotHists(hists, outdir, fmts):
 		                                         hist_labels={"trk-length-reco": "Reco", "trk-length-true": "True"})
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "trk-len", outdir, fmts)
+
+	for axis in ("x", "y"):
+		angles_hists = {hname: hists[hname] for hname in ("truemu-theta" + axis, "trk-theta%s-reco" % axis) if hname in hists}
+		if any(angles_hists.values()):
+			fig, ax = plotting_helpers.overlay_hists(angles_hists,
+			                                         xaxis_label=r"$\theta_{%s}$ (degrees)" % axis,
+			                                         yaxis_label="Tracks",
+			                                         hist_labels={"trk-theta%s-reco" % axis: r"Reco tracks $\geq 100$ cm",
+			                                                      "truemu-theta" + axis: "True muons"})
+
+			cfg = dict( ymin=0, ymax=1, transform=ax.get_xaxis_transform(), color="black")
+			plt.vlines(x=90, label=r"$90^{\circ}$", linestyles="dashed", **cfg)
+			if axis == "y":
+				plt.vlines(x=95.8, label=r"Beam angle = $95.8^{\circ}$", linestyles="dotted", **cfg)
+			ax.legend()
+			plotting_helpers.savefig(fig, "theta" + axis, outdir, fmts)
+
 
 	if "truemu-visE-vs-len" in hists:
 		h = hists["truemu-visE-vs-len"]
@@ -560,7 +720,7 @@ def PlotHists(hists, outdir, fmts):
 		plotting_helpers.savefig(fig, "truemu-visE-vs-len", outdir, fmts)
 
 
-	if hists["delta-longest-trk-vs-length"]:
+	if "delta-longest-trk-vs-length" in hists and hists["delta-longest-trk-vs-length"]:
 		h = hists["delta-longest-trk-vs-length"]
 		fig = plt.figure()
 		ax = fig.add_subplot()
@@ -577,7 +737,7 @@ def PlotHists(hists, outdir, fmts):
 
 		plotting_helpers.savefig(fig, "dlongesttrklen-vs-true", outdir, fmts)
 
-	trklen_by_pid_hists = {hname: hists[hname] for hname in hists if hname.startswith("trk-length-truepid_pdg=")}
+	trklen_by_pid_hists = {hname: hists[hname] for hname in hists if hname.startswith("trk-length-truepid_pdg=") if hname in hists}
 	if len(trklen_by_pid_hists):
 		hist_labels = {}
 		for hname in trklen_by_pid_hists:
@@ -626,7 +786,7 @@ def PlotHists(hists, outdir, fmts):
 	              "mu-trk-mostEmu-completeness-vs-truemuKE",
 	              "mu-trk-longest-completeness-vs-muonVisE",
 	              "mu-trk-purity-vs-muonVisE"]:
-		if not hists[hname]: continue
+		if hname not in hists or not hists[hname]: continue
 
 		# column-normalize these
 		h = hists[hname]
