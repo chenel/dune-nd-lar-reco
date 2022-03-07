@@ -7,6 +7,7 @@ import scipy.spatial
 
 import plotting_helpers
 import track_functions
+import truth_functions
 
 TRACK_LABEL = 1
 
@@ -270,7 +271,7 @@ def true_muon_vox(vals):
 	return vals["true_muon_voxels"]
 
 
-def true_muon_begin_dir(vals):
+def all_true_muon_begin_dirs(vals):
 	product_name = "true_muon_begin_dir"
 	if product_name in vals:
 		return vals[product_name]
@@ -278,25 +279,31 @@ def true_muon_begin_dir(vals):
 	if product_name not in vals:
 		vals[product_name] = {}
 
-	voxels = true_muon_vox(vals)[:, :3]
-	if voxels.size == 0:
-		vals[product_name] = None
+	all_truemus_vox_by_cluster = truth_functions.true_muon_voxidxs_by_cluster(vals)
+#	print("true_mu_vox_by_cluster:", all_truemus_vox_by_cluster)
+#	voxels = true_muon_vox(vals)[:, :3]
+	if len(all_truemus_vox_by_cluster) == 0:
 		return vals[product_name]
 
-	trk_index = -13   # forged
-	endpoints = track_functions.track_endpoints(trk_index, vals, vals, voxels)
+	for clus_id, vox_idxs in all_truemus_vox_by_cluster.items():
+		voxels = vals["input_data"][vox_idxs, :3]
+		# forge a track ID so that it has some meaningful index in the map.
+		# offset of 0.5 is so that we don't overlap the reco track 0 (since -0 = 0)
+		trk_index = -(clus_id+0.5)
+		endpoints = track_functions.track_endpoints(trk_index, vals, vals, voxels)
 
-	# use the "track end direction" machinery to find the track *beginning* direction
-	# (look from the "beginning" point)
-#	print("voxels:", voxels)
-#   print("endpoints:", endpoints)
-	dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
-#	print("output of == test:", voxels == endpoints[0])
-	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]]
-	dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
-	dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
+		# use the "track end direction" machinery to find the track *beginning* direction
+		# (look from the "beginning" point)
+	#	print("voxels:", voxels)
+	#   print("endpoints:", endpoints)
+		dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
+	#	print("output of == test:", voxels == endpoints[0])
+		dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]]
+		dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
+		dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
 
-	vals[product_name] = dir_vec
+		vals[product_name][trk_index] = dir_vec
+#	print("cluster labels:", list(vals[product_name].keys()))
 
 	return vals[product_name]
 
@@ -600,8 +607,14 @@ def agg_truemu_thetax(vals):
 	"""
 	Plot the angle w.r.t. x-axis within x-z plane
 	"""
-	mu_angle = twod_angle(reference_axis=numpy.array([1, 0, 0]), normal_axis=([0, 1, 0]), track_dir=true_muon_begin_dir(vals))
-	return [mu_angle,] if mu_angle is not None else []
+	ret = []
+	for end_dir in all_true_muon_begin_dirs(vals).values():
+#		print("end_dir:", end_dir)
+		angle = twod_angle(reference_axis=numpy.array([1, 0, 0]), normal_axis=([0, 1, 0]), track_dir=end_dir)
+		if angle is not None:
+			ret.append(angle)
+#			print("angle:", angle)
+	return ret
 
 
 @plotting_helpers.hist_aggregate("truemu-thetay", **TWOD_ANGLES_BINS)
@@ -609,8 +622,12 @@ def agg_truemu_thetay(vals):
 	"""
 	Plot the angle w.r.t. y-axis within y-z plane
 	"""
-	mu_angle =  twod_angle(reference_axis=numpy.array([0, 1, 0]), normal_axis=([1, 0, 0]), track_dir=true_muon_begin_dir(vals))
-	return [mu_angle,] if mu_angle is not None else []
+	ret = []
+	for end_dir in all_true_muon_begin_dirs(vals).values():
+		angle = twod_angle(reference_axis=numpy.array([0, 1, 0]), normal_axis=([1, 0, 0]), track_dir=end_dir)
+		if angle is not None:
+			ret.append(angle)
+	return ret
 
 
 @plotting_helpers.hist_aggregate("truemu-visE-vs-len",
