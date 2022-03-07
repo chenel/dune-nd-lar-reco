@@ -89,7 +89,11 @@ def hist_aggregate(hist_name, hist_dim=1, norm=None, **hist_args):
 			for subsample, vs in vals.items():
 				full_hist_name = "%s_%s" % (hist_name, subsample) if subsample else hist_name
 				if hist_dim == 1:
-					hist, bins = numpy.histogram(vs, **hist_args)
+					try:
+						hist, bins = numpy.histogram(vs, **hist_args)
+					except:
+						print("Exception encountered inside aggregator function:", fn)
+						raise
 				elif hist_dim == 2:
 					if len(vs) == 0:
 						return
