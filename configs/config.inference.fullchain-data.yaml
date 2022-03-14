@@ -1,0 +1,259 @@
+iotool:
+  batch_size: 1
+  shuffle: False
+  num_workers: 1
+  collate_fn: CollateSparse
+  sampler:
+    name: SequentialBatchSampler
+
+  dataset:
+    name: LArCVDataset
+    limit_num_files: 10
+#    event_list: "[175, 176]"
+    schema:
+      # this first item is not needed for inference, but it's used in plots and is helpful to have stored in the files
+      metadata:
+        - parse_metadata
+        - sparse3d_larndsim
+      # next one is used to supply event ID information for use in summarizers
+      event_base:
+        - parse_eventbase
+        - sparse3d_larndsim
+      input_data:
+        - parse_sparse3d_scn  # this parser takes one argument: the tree with EventSparseTensor3Ds
+        - sparse3d_larndsim    # this is the name of the tree
+
+
+model:
+  # this is a misnomer (ghost hits not required), but that's what it's currently hooked up as
+  name: full_chain
+  modules:
+    # this is the thing that drives all the rest...
+    chain:
+      enable_uresnet: True
+      enable_ppn: True
+      # note that currently DBScan is automatically enabled if any of the CNN or GNNs below is enabled
+      enable_cnn_clust: False
+      enable_gnn_shower: True
+      use_ppn_in_gnn: True
+      enable_gnn_track: True
+      enable_gnn_inter: False
+      enable_ghost: False
+
+    # UResNet has lots of uses, but this one's configured for semantic segmentation on hits
+    uresnet_ppn:
+      uresnet_lonely:
+        freeze: False
+        num_strides: 7    # (number of downsample layers) + 1
+        filters: 16       # number of features generated at first layer, doubled (?) each layer
+        num_classes: 5
+        data_dim: 3
+        spatial_size: 1920
+        ghost: False      # artifacts from rebuilding 3D out of 2D views
+        features: 1       # number of input features
+
+      # "point of interest" network
+      # (note: depends on UResNet image filters from uresnet_lonely above; don't run without)
+      ppn:
+        num_strides: 7   # needs to match UResNet.  (allows PPN to understand its input)
+        filters: 16      # ditto
+        num_classes: 5   # ditto
+        data_dim: 3      # ditto
+        downsample_ghost: False
+        use_encoding: False
+        ppn_num_conv: 1
+        score_threshold: 0.5
+        ppn1_size: 24
+        ppn2_size: 96
+        spatial_size: 1920
+
+    # The clustering stack is composed of a couple of algorithms:
+    # DBSCAN makes 'fragments' (groups of neighboring hits of the same semantic type) first.
+    # the 'track-type' fragments are internally regrouped by constructing a graph of fragments
+    # and connecting those whose ends are within the DBSCAN grouping distance.
+    dbscan_frag:
+      dim: 3
+      min_samples: 1
+      num_classes: 4 # Ignores kShapeLEScatter, which is enum val 4
+      eps: [1.999, 3.999, 1.999, 4.999]  # "cluster neighborhood size" parameter to DBSCAN algorithm.  one eps for each cluster type
+#      min_size: [10,3,3,3]
+      min_size: [3,3,3,3]
+      cluster_classes: [0, 1, 2, 3] # run DBScan to cluster semantic hits of these types (type enum ShapeType_t from larcv)
+#      cluster_classes: [0, 2, 3]
+      track_label: 1   # needs to match larcv::kShapeTrack
+      michel_label: 2  # needs to match larcv::kShapeMichel
+      delta_label: 3   # needs to match larcv::kShapeDelta
+      track_clustering_method: 'masked_dbscan' # masked_dbscan, closest_path
+      ppn_score_threshold: 0.9 # 0.5 # 0.9
+      ppn_type_score_threshold: 0.5
+      ppn_type_threshold: 1.999
+      ppn_mask_radius: 10
+
+    # Then, once clusters are made then we can make particle candidates out of them:
+    # DBScan fragments of "track" hits are taken to be tracks,
+    # and a GNN is used to group the "shower" DBScan fragments into showers.
+    grappa_shower:
+      base:
+        node_type: 0
+        node_min_size: 10
+        add_start_point: True
+        add_start_dir: True
+        start_dir_max_dist: 5
+      node_encoder:
+        name: geo
+        use_numpy: False
+      edge_encoder:
+        name: geo
+        use_numpy: False
+      gnn_model:
+        name: meta
+        edge_feats: 19
+        node_feats: 28
+        node_classes: 2
+        edge_classes: 2
+        node_output_feats: 64
+        edge_output_feats: 64
+        aggr: add
+        leakiness: 0.1
+        num_mp: 3
+    grappa_shower_loss:
+      node_loss:
+        name: primary
+        high_purity: True
+        use_group_pred: True
+        group_pred_alg: score
+      edge_loss:
+        name: channel
+        source_col: 5
+        target_col: 6
+        high_purity: True
+
+    # Optionally, a GNN can also be used to connect the track-type fragments together.
+    # (it's off by default; see the flag 'enable_gnn_tracks' above under 'chain')
+    grappa_track:
+#      model_name: 'grappa_track'
+      base:
+        node_type: 1
+        node_min_size: 3
+        add_start_point: True
+        add_start_dir: True
+        start_dir_max_dist: 5
+      node_encoder:
+        name: 'geo'
+        use_numpy: False
+      edge_encoder:
+        name: 'geo'
+        use_numpy: False
+      gnn_model:
+        name: meta
+        edge_feats: 19
+        node_feats: 28
+        node_classes: 2
+        edge_classes: 2
+        node_output_feats: 64
+        edge_output_feats: 64
+        aggr: 'add'
+        leakiness: 0.1
+        num_mp: 3
+    grappa_track_loss:
+      edge_loss:
+        name: channel
+        high_purity: False
+        source_col: 5
+        target_col: 6
+
+    # With particles in hand, we can assemble them into an "interaction" using another GNN.
+    grappa_inter:
+      type_net:
+        num_hidden: 32
+      vertex_net:
+        num_hidden: 32
+      base:
+        node_type: [ 0, 1, 2, 3 ]  # todo: at least for now, don't try to cluster LEScatters -- in the "voxelized GEANT4" sim there are just too many.  revisit when using real charge sim
+        node_min_size: 3
+        add_start_point: True
+        add_start_dir: True
+        start_dir_max_dist: 5
+        group_pred: 'score'
+        kinematics_mlp: False # Compute PID in grappa_inter, but not momentum
+        kinematics_type: False
+        kinematics_momentum: False
+        vertex_mlp: False
+      node_encoder:
+        name: 'geo'
+        use_numpy: False
+      edge_encoder:
+        name: 'geo'
+        use_numpy: False
+      gnn_model:
+        name: meta
+        edge_feats: 19
+        node_feats: 28
+        node_classes: 2
+        edge_classes: 2
+        node_output_feats: 64
+        edge_output_feats: 64
+        aggr: 'add'
+        leakiness: 0.1
+        num_mp: 3
+    grappa_inter_loss:
+      edge_loss:
+        name: channel
+        loss: CE
+        source_col: 6
+        target_col: 7
+        reduction: sum
+        balance_classes: False
+        target: group
+        high_purity: False
+        # Remove the node_loss if you are not predicting PID or vertex
+#     node_loss:
+#       name: kinematics
+#       type_loss: CE
+#       balance_classes: True
+#       spatial_size: 768
+
+    # The whole chain's losses are considered together during the training.
+    # The values here are to allow them to be weighted differently.
+    full_chain_loss:
+      segmentation_weight: 1.
+      clustering_weight: 1.
+      ppn_weight: 1.
+      shower_gnn_weight: 1.
+      particle_gnn_weight: 1.
+      track_gnn_weight: 1.
+      inter_gnn_weight: 1.
+      kinematics_weight: 10.
+      kinematics_p_weight: 1.
+      kinematics_type_weight: 1.
+      flow_weight: 10.
+      cosmic_weight: 1.
+
+  network_input:
+    - input_data
+
+
+trainval:
+  seed: 123
+  concat_result: ['embeddings', 'seediness', 'margins',
+                  'total_num_points', 'total_nonghost_points',
+                  'fragments', 'fragments_seg',
+                  'clust_fragments', 'clust_frag_seg',
+                  'shower_fragments', 'shower_edge_index', 'shower_edge_pred', 'shower_node_pred','shower_group_pred',
+                  'track_fragments', 'track_edge_index', 'track_node_pred', 'track_edge_pred', 'track_group_pred',
+                  'particles', 'particle_fragments', 'particle_edge_index', 'particle_node_pred', 'particle_edge_pred', 'particle_group_pred',
+                  'node_pred_p', 'node_pred_type', 'node_pred_vtx',
+                  'flow_edge_pred',
+                  'interactions', 'inter_cosmic_pred', 'inter_edge_index', 'inter_edge_pred', 'inter_node_pred',
+                  'kinematics_particles', 'kinematics_edge_index',
+                  "event_base"]
+  learning_rate: 0.001
+  unwrapper: unwrap_3d_scn
+  weight_prefix: weights/snapshot
+  iterations: 1
+  report_step: 1
+  log_dir: log_inference
+  train: False
+  debug: False
+#  minibatch_size: -1
+
