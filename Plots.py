@@ -37,6 +37,8 @@ def ParseArgs():
 	                    help="Target directory to write output plots.")
 	parser.add_argument("--overwrite", action="store_true", default=False,
 	                    help="Overwrite output directory.")
+	parser.add_argument("--start-evt", "-0", type=int, help="Event index to start processing at", default=0)
+	parser.add_argument("--max-evts", "-n", type=int, help="Maximum number of events to process", default=-1)
 	parser.add_argument("--img_format", "-f", action="append", choices=["eps", "png", "pdf"],
 	                    help="Image format(s) to write output in.  Pass as many as desired.  Default uses 'png' and 'pdf'.")
 
@@ -73,7 +75,7 @@ def ParseArgs():
 	return args
 
 
-def Load(filenames):
+def Load(filenames, start_evt=0, max_evts=-1):
 	import plotting_helpers
 
 	for f in filenames:
@@ -91,6 +93,8 @@ def Load(filenames):
 					data[k] = datafile[k].item()
 				except:
 					data[k] = datafile[k]
+
+				data[k] = data[k][start_evt:max_evts]
 
 		print("Loaded", len(data), "keys from file:", f)
 		print("   keys =", [(k, type(data[k])) for k in data])
@@ -112,7 +116,7 @@ if __name__ == "__main__":
 	            for m in KNOWN_PLOT_MODULES if not getattr(args, "disable_" + m) }
 
 	hists = {}
-	for data in Load(args.input_file):
+	for data in Load(args.input_file, start_evt=args.start_evt, max_evts=args.max_evts):
 		for mod_name, module in modules.items():
 			if mod_name not in hists:
 				hists[mod_name] = {}
