@@ -42,6 +42,19 @@ class Hist:
 
 		self.norm = None  # don't allow it to be done multiple times
 
+	def StdDev(self, bin_range=(0, -1)):
+		# constrain to range if requested
+		data = self.data[bin_range[0]:bin_range[1]]
+		bins = self.bins[bin_range[0]:(bin_range[1]+1 if bin_range[1] >= 0 else -1)]
+
+		print("bins:", bins)
+		print("data:", data)
+
+		bin_ctrs = bins[:-1] + (bins[1:] - bins[:-1]) * 0.5
+		N = data.sum()
+		mean = (data * bin_ctrs).sum() / N
+		return numpy.sqrt(((bin_ctrs - mean) ** 2 * data).sum() / (N - 1))
+
 def req_vars_hist(var_names):
 	global REQUIRED_VARS
 	REQUIRED_VARS.update(var_names)
