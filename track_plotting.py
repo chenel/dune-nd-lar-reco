@@ -2,6 +2,7 @@ import copy
 
 from matplotlib import pyplot as plt
 import matplotlib.colors
+import matplotlib.transforms
 import numpy
 import scipy.spatial
 
@@ -29,7 +30,7 @@ PDG = {
 	2212: "Proton",
 }
 
-TWOD_ANGLES_BINS = dict( bins=61, range=(0, 183) )
+TWOD_ANGLES_BINS = dict( bins=37, range=(2.5, 187.5) )
 
 def completeness(vals):
 	keys = ("total_muon_E", "largest_matched_muonE", "longesttrk_matched_muonE")
@@ -460,6 +461,41 @@ def agg_dtrklen_vs_trklen(vals):
 	return [[longest_true,], [(longest_true - longest_reco) / longest_true,]]
 
 
+@plotting_helpers.hist_aggregate("delta-longest-trk-angle",
+                                 bins=numpy.linspace(0, 182, 92))
+def agg_dcostheta(vals):
+#	true_begin_dirs = all_true_muon_begin_dirs(vals)
+#	print("reco track lengths:", reco_track_lengths_cm(vals))
+	reco_lengths = reco_track_lengths_cm(vals)
+	if len(reco_lengths) == 0:
+		return []
+	max_length_idx = numpy.nanargmax(reco_lengths)
+	reco_begin_dir = reco_track_begin_dir(max_length_idx, vals)
+
+	true_begin_dir = None
+	for p in vals["particles_raw"]:
+		if abs(p.pdg_code()) != 13:
+			continue
+		# only one muon shall pass
+		if true_begin_dir is not None:
+			return []
+		true_begin_dir = numpy.array([p.px(), p.py(), p.pz()])
+
+	if true_begin_dir is None or reco_begin_dir is None:
+		return []
+
+	if numpy.count_nonzero(true_begin_dir) - numpy.count_nonzero(numpy.isnan(true_begin_dir)) == 0 \
+			or numpy.count_nonzero(reco_begin_dir) - numpy.count_nonzero(numpy.isnan(reco_begin_dir)) == 0:
+		return []
+
+	costheta =  numpy.dot(true_begin_dir, reco_begin_dir) / numpy.linalg.norm(true_begin_dir) / numpy.linalg.norm(reco_begin_dir)
+	# print("reco dir:", reco_begin_dir)
+	# print("true dir:", true_begin_dir)
+	# print("cos theta:", costheta)
+	return [numpy.degrees(numpy.arccos(costheta))]
+
+
+
 @plotting_helpers.hist_aggregate("mu-trk-mostEmu-completeness-vs-muonVisE",
                                  hist_dim=2,
                                  bins=(numpy.linspace(0, 1500, 30),
@@ -658,23 +694,24 @@ def agg_truemu_visE_vs_len(vals):
 
 # @plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
 #                                  "event_base", "ppn_post"])
-@plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "cluster_label", "ppn_post"])
+@plotting_helpers.req_vars_hist(["input_data", "event_base", "track_fragments", "track_group_pred", "particles_raw", "cluster_label", "ppn_post"])
 def BuildHists(data, hists):
 	for evt_idx in range(len(data["particles_raw"])):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (
-				       # agg_trklen_reco, agg_trklen_true,
-		               # agg_ntracks_reco, agg_ntracks_true,
+				       agg_trklen_reco, agg_trklen_true,
+		               agg_ntracks_reco, agg_ntracks_true,
 		               agg_trkanglex_reco, agg_trkangley_reco,
-		               agg_truemu_thetax, agg_truemu_thetay,
-		               # agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
-		               # agg_dtrklen_vs_trklen, agg_trklen_truepid,
-		               # agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
-		               # agg_muontrk_longest_completeness_vs_muonVisE,
-		               # agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
-		               # agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
-		               # agg_muontrk_purity_vs_muonVisE
+#		               agg_truemu_thetax, agg_truemu_thetay,
+		               agg_dcostheta,
+		               agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
+		               agg_dtrklen_vs_trklen, agg_trklen_truepid,
+		               agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
+		               agg_muontrk_longest_completeness_vs_muonVisE,
+		               agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
+		               agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
+		               agg_muontrk_purity_vs_muonVisE
 		):
 			agg_fn(evt_data, hists)
 
@@ -711,15 +748,32 @@ def PlotHists(hists, outdir, fmts):
 		if any(angles_hists.values()):
 			fig, ax = plotting_helpers.overlay_hists(angles_hists,
 			                                         xaxis_label=r"$\theta_{%s}$ (degrees)" % axis,
-			                                         yaxis_label="Tracks",
-			                                         hist_labels={"trk-theta%s-reco" % axis: r"Reco tracks $\geq 100$ cm",
+			                                         yaxis_label="Muon candidates", #"Tracks",
+			                                         hist_labels={"trk-theta%s-reco" % axis: "Muon candidates", #r"Reco tracks $\geq 100$ cm",
 			                                                      "truemu-theta" + axis: "True muons"})
 
 			cfg = dict( ymin=0, ymax=1, transform=ax.get_xaxis_transform(), color="black")
+			blended_xform = matplotlib.transforms.blended_transform_factory(ax.transData, ax.transAxes)
+			annotate_cfg = dict(  textcoords=blended_xform, xycoords=blended_xform,
+			                      transform=blended_xform,
+			                      arrowprops={"facecolor": "black", "width": 1, "headlength": 5, "shrink": 0.1, "headwidth": 5,
+			                                  "connectionstyle": "angle3"} )
 			plt.vlines(x=90, label=r"$90^{\circ}$", linestyles="dashed", **cfg)
 			if axis == "y":
 				plt.vlines(x=95.8, label=r"Beam angle = $95.8^{\circ}$", linestyles="dotted", **cfg)
-			ax.legend()
+				plt.annotate(r"Beam angle = $95.8^{\circ}$", xy=(95.8, 0.98), xytext=(115, 0.85),
+				             horizontalalignment="left", verticalalignment="center",
+				             **annotate_cfg)
+
+#			ax.legend()
+			plt.annotate(r"$90^{\circ}$", xy=(90, 0.96), xytext=(75, 0.9),
+			             horizontalalignment="right", verticalalignment="center",
+			             **annotate_cfg)
+
+			ax.get_legend().remove()
+			plt.xlim(left=0)
+			plt.ylim(bottom=0)
+
 			plotting_helpers.savefig(fig, "theta" + axis, outdir, fmts)
 
 
@@ -737,7 +791,20 @@ def PlotHists(hists, outdir, fmts):
 		plotting_helpers.savefig(fig, "truemu-visE-vs-len", outdir, fmts)
 
 
-	if "delta-longest-trk-vs-length" in hists and hists["delta-longest-trk-vs-length"]:
+	if "delta-longest-trk-angle" in hists and hists["delta-longest-trk-angle"] and hists["delta-longest-trk-angle"].data.sum() > 0:
+		h = hists["delta-longest-trk-angle"]
+		fig, ax = plotting_helpers.overlay_hists({"dcostheta": h},
+		                                         xaxis_label=r"$\theta_{true,reco} = \cos^{-1} \left(\hat{r}_{true\ \mu} \cdot \hat{r}_{longest\ reco} \right)$")
+
+		# compute stddev
+		plt.text(0.6, 0.8, r"Std. dev. = $%.2f^{\circ}$" % h.StdDev(), transform=ax.transAxes)
+		plt.text(0.6, 0.7, r"Std. dev. ($\theta < 25^{\circ}$) = $%.2f^{\circ}$" % h.StdDev(bin_range=[0, numpy.nanargmax(h.bins[h.bins < 25])]), transform=ax.transAxes)
+
+		plotting_helpers.savefig(fig, "dcostheta", outdir, fmts)
+
+
+
+	if "delta-longest-trk-vs-length" in hists and hists["delta-longest-trk-vs-length"] and hists["delta-longest-trk-vs-length"].data.sum() > 0:
 		h = hists["delta-longest-trk-vs-length"]
 		fig = plt.figure()
 		ax = fig.add_subplot()
