@@ -9,6 +9,7 @@
 #include "CAFAna/Core/Spectrum.h"
 #include "CAFAna/Core/SpectrumLoader.h"
 
+#include "PlotStyle.h"
 #include "EnergyEstimatorCutsVars.h"
 
 const std::string HIST_LABEL = "RecoEhadVisVsTrueEnuMinusRecoEmu";
@@ -130,11 +131,14 @@ void FitDriver::DoFit()
   TCanvas c;
   prof.SetMarkerSize(10);
   prof.Draw("pe");
+  dunestyle::CenterTitles(&prof);
 
   TFitResultPtr fit = prof.Fit("pol1", "s");
-  TLatex text(0.15, 0.8, Form("E_{had}/GeV = %.2g E_{had}^{vis}/GeV + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
+  TLatex text(0.18, 0.82, Form("E_{had}/GeV = %.2g E_{had}^{vis}/GeV + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
   text.SetNDC();
   text.Draw();
+
+  dunestyle::WIP(kHAlignLeft);
 
   this->SaveCanvasImg(c, "RecoEhadVis_prof_TrueEnuMinusRecoEmu");
 }
@@ -163,6 +167,7 @@ void FitEnuEstimator(const std::string & histFilePath, const std::string & outDi
 
   TCanvas c;
   th2->Draw("colz");
+  dunestyle::CenterTitles(th2);
   c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
 
   FitDriver f(outDir, th2);
@@ -186,6 +191,7 @@ void FitEnuEstimator(const std::string & inputCAF, const std::string & histFileP
   TH2 * th2 = spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.ToTH2(spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.POT());
 //  TCanvas c;
 //  th2->Draw("colz");
+//  dunestyle::CenterTitles(th2);
 //  c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
   FitDriver f(outDir, th2);
   f.DoFit();

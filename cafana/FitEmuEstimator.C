@@ -6,10 +6,12 @@
 #include "TH2.h"
 #include "TUnixSystem.h"
 
+#include "CAFAna/Core/HistAxis.h"
 #include "CAFAna/Core/LoadFromFile.h"
 #include "CAFAna/Core/Spectrum.h"
 #include "CAFAna/Core/SpectrumLoader.h"
 
+#include "PlotStyle.h"
 #include "EnergyEstimatorCutsVars.h"
 
 const std::string HIST_LABEL = "RecoTrkLenVsTrueEmu";
@@ -126,14 +128,17 @@ void FitDriver::DoFit()
   TCanvas c;
   prof.SetMarkerSize(10);
   prof.Draw("pe");
+  dunestyle::CenterTitles(&prof);
 
   TFitResultPtr fit = prof.Fit("pol1", "s");
-  TLatex text(0.15, 0.8, Form("E_{#mu}/GeV = %.2g L_{trk}/cm + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
+  TLatex text(0.2, 0.8, Form("E_{#mu}/GeV = %.2g L_{trk}/cm + %.2f", fit->GetParams()[1], fit->GetParams()[0]));
   text.SetNDC();
 
 //  TF1 f("linonly", "[0] * x");
 //  TFitResultPtr fit = prof.Fit(&f, "s");
 //  TLatex text(25, 3, Form("E_{#mu}/GeV = %.2g L_{trk}/cm ", fit->GetParams()[0]));
+
+  dunestyle::WIP();
 
   text.Draw();
   this->SaveCanvasImg(c, "MuonTrkE_prof_TrueMuonE");
@@ -146,6 +151,7 @@ void FitDriver::DoFit()
 // only 2 arguments: hist file already exists
 void FitEmuEstimator(const std::string & histFilePath, const std::string & outDir)
 {
+  std::cout << "using 2-argument version" << std::endl;
   auto specPtr = ana::LoadFromFile<ana::Spectrum>(histFilePath, HIST_LABEL);
   if (!specPtr)
   {
@@ -167,6 +173,7 @@ void FitEmuEstimator(const std::string & histFilePath, const std::string & outDi
 // 3 arguments: requesting to make the hist file first, then fit
 void FitEmuEstimator(const std::string & inputCAF, const std::string & histFilePath, const std::string & outDir)
 {
+  std::cout << "using 3-argument version" << std::endl;
   ana::SpectrumLoader loader(inputCAF);
   ana::Spectrum spec_RecoTrkLen_vs_TrueEmu(loader,
                                            ana::HistAxis("True muon energy (GeV)", ana::Binning::Simple(50, 0, 5), kTrueMuE),
