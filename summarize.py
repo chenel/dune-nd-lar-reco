@@ -166,7 +166,7 @@ def summarize_tracks(input_data, reco_output):
 
         # finally, figure out its direction at the end of the track.
         dists = track_functions.track_voxel_dists(trk_index, input_data, reco_output, voxels)
-        dists_to_end = dists[numpy.where((voxels == endpoints[1]).all(axis=1))[0]]
+        dists_to_end = dists[numpy.where((voxels == endpoints[1]).all(axis=1))[0]][0]
         dir_vec = track_functions.track_end_dir(voxels, dists_to_end, endpoints)
 
         # for tracks that don't wind up being the muon candidate,

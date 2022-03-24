@@ -176,7 +176,7 @@ def reco_track_begin_dir(trk_index, vals):
 	# use the "track end direction" machinery to find the track *beginning* direction
 	# (look from the "beginning" point)
 	dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
-	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]]
+	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]][0]
 	dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
 	dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
 
