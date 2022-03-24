@@ -186,7 +186,7 @@ def reco_track_begin_dir(trk_index, vals):
 
 
 def reco_tracks_2d_angles(reference_axis, normal_axis, vals):
-	""" Return the angles of all tracks within a 2D plane (defined by its normal vector) relative to a reference axis. """
+	""" Return the angles of all >100cm tracks within a 2D plane (defined by its normal vector) relative to a reference axis. """
 
 #	track_indices = numpy.unique(vals["track_group_pred"])
 
@@ -196,7 +196,7 @@ def reco_tracks_2d_angles(reference_axis, normal_axis, vals):
 	if len(trk_lengths) < 1:
 		return []
 #	longest_track_idx = numpy.nanargmax(trk_lengths)
-	track_indices = numpy.nonzero(trk_lengths >= 100)[0]
+	track_indices = numpy.nonzero(trk_lengths >= LONG_TRACK)[0]
 #	print("track_indices:", track_indices)
 
 	for trk_index in track_indices:
@@ -749,7 +749,7 @@ def PlotHists(hists, outdir, fmts):
 			fig, ax = plotting_helpers.overlay_hists(angles_hists,
 			                                         xaxis_label=r"$\theta_{%s}$ (degrees)" % axis,
 			                                         yaxis_label="Muon candidates", #"Tracks",
-			                                         hist_labels={"trk-theta%s-reco" % axis: "Muon candidates", #r"Reco tracks $\geq 100$ cm",
+			                                         hist_labels={"trk-theta%s-reco" % axis: "Muon candidates", #r"Reco tracks $\geq %d$ cm" % LONG_TRACK,
 			                                                      "truemu-theta" + axis: "True muons"})
 
 			cfg = dict( ymin=0, ymax=1, transform=ax.get_xaxis_transform(), color="black")
