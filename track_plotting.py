@@ -178,7 +178,6 @@ def reco_track_begin_dir(trk_index, vals):
 	dists = track_functions.track_voxel_dists(trk_index, vals, vals, voxels)
 	dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]][0]
 	dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
-	dir_vec *= -1  # the vector from track_end_dir() points outward from the endpoint; we want to point inwards for this
 
 	vals[product_name][trk_index] = dir_vec
 
@@ -203,6 +202,8 @@ def reco_tracks_2d_angles(reference_axis, normal_axis, vals):
 		track_dir = reco_track_begin_dir(trk_index, vals)
 
 		theta = twod_angle(normal_axis, reference_axis, track_dir)
+		if theta is None:
+			print("track dir", track_dir, "has no projection onto plane specified by normal", normal_axis, "and reference axis", reference_axis)
 		angles += [theta,] if theta is not None else []
 
 	return angles
