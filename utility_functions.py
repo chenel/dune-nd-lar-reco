@@ -1,5 +1,5 @@
 """
-  truth_functions.py : Helper functions that don't fit into another category
+  utility_functions.py : Helper functions that don't fit into another category
 
   Original author:  J. Wolcott <jwolcott@fnal.gov>
              Date:  Mar. 2022
