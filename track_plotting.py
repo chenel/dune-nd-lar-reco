@@ -2,6 +2,7 @@ import copy
 
 from matplotlib import pyplot as plt
 import matplotlib.colors
+import matplotlib.style
 import matplotlib.transforms
 import numpy
 import scipy.spatial
@@ -9,6 +10,9 @@ import scipy.spatial
 import plotting_helpers
 import track_functions
 import truth_functions
+
+if "wolcott" in matplotlib.style:
+	plt.style.use('wolcott')
 
 TRACK_LABEL = 1
 
