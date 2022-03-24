@@ -697,7 +697,8 @@ def agg_truemu_visE_vs_len(vals):
 #                                  "event_base", "ppn_post"])
 @plotting_helpers.req_vars_hist(["input_data", "event_base", "track_fragments", "track_group_pred", "particles_raw", "cluster_label", "ppn_post"])
 def BuildHists(data, hists):
-	for evt_idx in range(len(data["particles_raw"])):
+	nevts = len(data["particles_raw"]) if "particles_raw" in data else len(data["input_data"])
+	for evt_idx in range(nevts):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (
