@@ -6,12 +6,15 @@ from matplotlib import pyplot as plt
 
 from larcv import larcv
 
+plt.style.use("./dune.mplstyle")
+
 LABELS_TO_IGNORE = ("Ghost", "Unknown")
 SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
 
 # this will be updated by req_vars_hist() below
 REQUIRED_VARS = set()
 
+AUTO_WIP_TAG = False
 
 class Hist:
 	def __init__(self, dim=1, norm=None, bins=None, data=None):
@@ -194,4 +197,12 @@ def overlay_hists(hists, xaxis_label=None, yaxis_label="Events", hist_labels={},
 
 def savefig(fig, name_stub, outdir, fmts):
 	for fmt in fmts:
+		if AUTO_WIP_TAG:
+			WIPTag(transform=fig.get_axes()[0].transAxes)
 		fig.savefig(os.path.join(outdir, name_stub + "." + fmt))
+
+
+def WIPTag(transform=None):
+	plt.text(0, 1.05, r"DUNE Work In Progress",
+	         fontdict={"fontsize": 24, "color": "blue"},
+	         transform=transform if transform is not None else plt.gca().transAxes)

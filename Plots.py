@@ -12,6 +12,8 @@ import numpy
 import os, os.path
 import sys
 
+import plotting_helpers
+
 KNOWN_PLOT_MODULES = {
 	"ss": "Semantic segmentation",
 	"ppn": "Point proposal",
@@ -41,6 +43,7 @@ def ParseArgs():
 	parser.add_argument("--max-evts", "-n", type=int, help="Maximum number of events to process", default=-1)
 	parser.add_argument("--img_format", "-f", action="append", choices=["eps", "png", "pdf"],
 	                    help="Image format(s) to write output in.  Pass as many as desired.  Default uses 'png' and 'pdf'.")
+	parser.add_argument("--wip", action="store_true", help="Add 'DUNE Work In Progress' tag?", default=False)
 
 	plots_args = parser.add_argument_group("plots", "Which plots to make")
 	for module, description in KNOWN_PLOT_MODULES.items():
@@ -114,6 +117,9 @@ if __name__ == "__main__":
 
 	modules = { m: importlib.import_module(m + "_plotting")
 	            for m in KNOWN_PLOT_MODULES if not getattr(args, "disable_" + m) }
+
+	if args.wip:
+		plotting_helpers.AUTO_WIP_TAG = True
 
 	hists = {}
 	for data in Load(args.input_file, start_evt=args.start_evt, max_evts=args.max_evts):
