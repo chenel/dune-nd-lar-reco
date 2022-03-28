@@ -61,13 +61,13 @@ const std::map<std::string, ana::HistAxis> VARS_TO_PLOT
     {"TrueVtxZY",               {"True vertex z (cm)", ana::Binning::Simple(100, 200, 1200),  kTrueVtxZ,
                                 "True vertex y (cm)",  ana::Binning::Simple(140, -700, 700), kTrueVtxY}},
 
-    {"MuLenVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
-                        "Muon candidate track length (cm)", ana::Binning::Simple(35, 0, 700), kMuonCandLen}},
+    {"MuLenVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(15, 0, 1.5), kTrueMuE,
+                        "Muon candidate track length (cm)", ana::Binning::Simple(27, 0, 540), kMuonCandLen}},
 
     {"EmuVsTrueEmu", {"True muon energy (GeV)",  ana::Binning::Simple(30, 0, 3), kTrueMuE,
                       "Reco muon energy (GeV)",   ana::Binning::Simple(20, 0, 2), kRecoEmuFromTrkLen}},
 
-    {"EmuResidVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueMuE,
+    {"EmuResidVsTrueEmu", {"True muon energy (GeV)",           ana::Binning::Simple(15, 0, 1.5), kTrueMuE,
                            "(E_{#mu}^{reco} - E_{#mu}^{true}) / E_{#mu}^{true}", ana::Binning::Simple(41, -1, 1), (kRecoEmuFromTrkLen - kTrueMuE)/kTrueMuE}},
     {"EnuResidVsTrueEnu", {"True neutrino energy (GeV)",           ana::Binning::Simple(50, 0, 5), kTrueEnu,
                           "(E_{#mu}^{reco} + E_{had}^{reco} - E_{#nu}^{true}) / E_{#nu}^{true}", ana::Binning::Simple(41, -1, 1), (kRecoEhadFromEhadVis + kRecoEmuFromTrkLen - kTrueEnu)/kTrueEnu}},
@@ -157,6 +157,7 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir, bo
       dunestyle::WIP(kHAlignLeft);
 
     c.SaveAs((outdir + "/" + specPair.first + ".png").c_str());
+    c.SaveAs((outdir + "/" + specPair.first + ".pdf").c_str());
     c.SaveAs((outdir + "/" + specPair.first + ".root").c_str());
   }
 
@@ -182,6 +183,7 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir, bo
     if (includeDUNEWIP)
       dunestyle::WIP(kHAlignLeft);
     c.SaveAs((outdir + "/EmuResol.png").c_str());
+    c.SaveAs((outdir + "/EmuResol.pdf").c_str());
   }
 
   if (spectra.count("EnuResidVsTrueEnu_NTracks+RecoCont+Signal") > 0)
@@ -206,6 +208,7 @@ void NumuCCIncPlots(const std::string & inputCAF, const std::string & outdir, bo
     if (includeDUNEWIP)
       dunestyle::WIP(kHAlignLeft);
     c.SaveAs((outdir + "/EnuResol.png").c_str());
+    c.SaveAs((outdir + "/EnuResol.pdf").c_str());
   }
 
 }
