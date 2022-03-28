@@ -168,6 +168,7 @@ void FitEnuEstimator(const std::string & histFilePath, const std::string & outDi
   TCanvas c;
   th2->Draw("colz");
   dunestyle::CenterTitles(th2);
+  dunestyle::WIP();
   c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
 
   FitDriver f(outDir, th2);
@@ -188,11 +189,13 @@ void FitEnuEstimator(const std::string & inputCAF, const std::string & histFileP
   TFile outf(histFilePath.c_str(), "recreate");
   ana::SaveTo(spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu, &outf, HIST_LABEL);
 
+  dunestyle::CherryInvertedPalette();
   TH2 * th2 = spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.ToTH2(spec_RecoEhadVis_vs_TrueEnuMinusRecoEmu.POT());
-//  TCanvas c;
-//  th2->Draw("colz");
-//  dunestyle::CenterTitles(th2);
-//  c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
+  TCanvas c;
+  th2->Draw("colz");
+  dunestyle::CenterTitles(th2);
+  dunestyle::WIP();
+  c.SaveAs((outDir + "/RecoEhadVis_vs_TrueEnuMinusRecoEmu.png").c_str());
   FitDriver f(outDir, th2);
   f.DoFit();
 }
