@@ -11,9 +11,6 @@ import plotting_helpers
 import track_functions
 import truth_functions
 
-if "wolcott" in matplotlib.style:
-	plt.style.use('wolcott')
-
 TRACK_LABEL = 1
 
 TRACK_THRESHOLD = 5.0 # cm
@@ -697,27 +694,27 @@ def agg_truemu_visE_vs_len(vals):
 
 #------------------------------------------------------
 
-# @plotting_helpers.req_vars_hist(["input_data", "track_fragments", "track_group_pred", "particles_raw", "metadata", "cluster_label",
-#                                  "event_base", "ppn_post"])
 @plotting_helpers.req_vars_hist(["input_data", "event_base", "track_fragments", "track_group_pred", "particles_raw", "cluster_label", "ppn_post"])
+#@plotting_helpers.req_vars_hist(["input_data", "event_base", "track_fragments", "track_group_pred", "ppn_post"])
 def BuildHists(data, hists):
 	nevts = len(data["particles_raw"]) if "particles_raw" in data else len(data["input_data"])
 	for evt_idx in range(nevts):
 		# first: number of tracks
 		evt_data = { k: data[k][evt_idx] for k in data }
 		for agg_fn in (
-				       agg_trklen_reco, agg_trklen_true,
-		               agg_ntracks_reco, agg_ntracks_true,
+				       agg_trklen_reco, #agg_trklen_true,
+		               agg_ntracks_reco, #agg_ntracks_true,
 		               agg_trkanglex_reco, agg_trkangley_reco,
-#		               agg_truemu_thetax, agg_truemu_thetay,
-		               agg_dcostheta,
-		               agg_ntrackslongtrk_reco, agg_ntrackslongtrk_true,
-		               agg_dtrklen_vs_trklen, agg_trklen_truepid,
-		               agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
-		               agg_muontrk_longest_completeness_vs_muonVisE,
+		               #agg_truemu_thetax, agg_truemu_thetay,
+		               #agg_dcostheta,
+		               agg_ntrackslongtrk_reco, #agg_ntrackslongtrk_true,
+		               #agg_dtrklen_vs_trklen,
+				       agg_trklen_truepid,
+		               # agg_muontrk_mostEmu_completeness_vs_muonVisE, agg_muontrk_completeness_vs_truemuKE,
+		               # agg_muontrk_longest_completeness_vs_muonVisE,
 		               agg_muontrk_found_vs_truemuE, agg_muontrk_found_purity_vs_truemuE, agg_muontrk_found_completeness_vs_truemuE,
 		               agg_truemu_vs_truemuE, agg_truemu_visE_vs_len,
-		               agg_muontrk_purity_vs_muonVisE
+		               # agg_muontrk_purity_vs_muonVisE
 		):
 			agg_fn(evt_data, hists)
 
@@ -834,7 +831,7 @@ def PlotHists(hists, outdir, fmts):
 			hist_labels[hname] = PDG[int(hname.split("=")[-1])]
 		fig, ax = plotting_helpers.overlay_hists(trklen_by_pid_hists,
 		                                         xaxis_label="True particle trajectory length (cm)",
-		                                         yaxis_label="particles_raw",
+		                                         yaxis_label="Particles",
 		                                         hist_labels=hist_labels)
 		ax.set_xscale("log")
 		plotting_helpers.savefig(fig, "trk-length-truepid", outdir, fmts)
@@ -855,12 +852,16 @@ def PlotHists(hists, outdir, fmts):
 				suffix += " only"
 			labels[eff_numerator] = suffix
 
-		for eff_hist_name in eff_hists:
-			fig, ax = plotting_helpers.overlay_hists(eff_hists,
-			                                         xaxis_label="True visible muon energy (MeV)",
-			                                         yaxis_label="Muon identification efficiency",
-			                                         hist_labels=labels)
-			plotting_helpers.savefig(fig, "mu-trk-id-eff", outdir, fmts)
+		fig, ax = plotting_helpers.overlay_hists(eff_hists,
+		                                         xaxis_label="True visible muon energy (MeV)",
+		                                         yaxis_label="Muon identification efficiency",
+		                                         hist_labels=labels)
+		plotting_helpers.savefig(fig, "mu-trk-id-eff", outdir, fmts)
+
+		fig, ax = plotting_helpers.overlay_hists({"": eff_hists["mu-trk-found"]},
+		                                         xaxis_label="True visible muon energy (MeV)",
+		                                         yaxis_label="Muon identification efficiency")
+		plotting_helpers.savefig(fig, "mu-trk-id-eff-total", outdir, fmts)
 
 
 	xlabels = {
