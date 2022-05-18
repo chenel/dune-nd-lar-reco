@@ -151,9 +151,10 @@ Each of these `SR` types then contains fields that can be drilled down into; the
 #### Updates to `StandardRecord` for ND-LAr reco
 As the FD CAFMaker is being prepared for a move to a more structured format (see branch [`feature/cafs`](https://cdcvs.fnal.gov/redmine/projects/dunetpc/repository/entry/dune/CAFMaker?utf8=%E2%9C%93&rev=feature%2Fcafs)), I decided to introduce the ND-LAr reco variables in a similar "structured" format.
 
-**The relevant branch for this work in `duneanaobj` is called [`feature/add_nd_vars`](https://github.com/DUNE/duneanaobj/tree/feature/add_nd_vars).**
+A number of changes for ND in `duneanaobj` were merged to the `master` branch to ready it for supporting ND-LAr (see [PR #1](https://github.com/DUNE/duneanaobj/pull/1)).
+Besides restructuring the other branches to match what's in the FD CAFMaker, these changes notably add a new object called `ndlar`, which currently has fields for reconstructed tracks and showers.
 
-Besides restructuring the other branches to match what's in the FD CAFMaker, this branch notably adds a new object called `ndlar`, which currently has fields for reconstructed tracks and showers.
+Howeever, some of the changes go slightly beyond the formatting of the CAFs that currently exist, so **you will need to use a special tag of `duneanaobj` called [`jw_cafs_20211208`](https://github.com/DUNE/duneanaobj/releases/tag/jw_cafs_20211208).** 
 
 #### Browsing
 
@@ -209,11 +210,11 @@ You need to install a package of the updated `duneanaobj` in it for it to be use
     DUNEANAOBJ_SRC=/dune/app/users/jwolcott/dunesoft/duneanaobj
     git clone https://github.com/DUNE/duneanaobj.git $DUNEANAOBJ_SRC
     cd $DUNEANAOBJ_SRC
-    git checkout feature/add_nd_vars
+    git checkout jw_cafs_20211208
     ```
     
-    At the moment this branch is configured to produce a UPS product with version `v01_01_00`, which is the ostensible next version of a public product.
-    It may be advisable for you to set your custom version to something more recognizable as home-brewed---perhaps `testing`.
+    This tag is configured to produce a UPS product with version `v01_01_00`, which is the ostensible next version of a public product.
+    It may be advisable for you to set your custom version to something more recognizable as home-brewed so that if errors occur you can see them more obviously---perhaps `testing`.
     To do that, edit the file `ups/product_deps` and find the line near the top beginning with `parent`.
     Swap out `v01_01_00` with whatever you've picked.
     (I'll use `testing` for the rest of this Howto.)
