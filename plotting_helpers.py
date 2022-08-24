@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 
 from larcv import larcv
 
-plt.style.use("./dune.mplstyle")
+import os.path
+plt.style.use(os.path.join(os.path.dirname(__file__), "dune.mplstyle"))
 
 LABELS_TO_IGNORE = ("Ghost", "Unknown")
 SHAPE_LABELS = {getattr(larcv, s): s[6:] for s in dir(larcv.ShapeType_t) if s.startswith("kShape") and not any(s.endswith(l) for l in LABELS_TO_IGNORE) }
