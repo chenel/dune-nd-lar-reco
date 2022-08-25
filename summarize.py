@@ -147,6 +147,7 @@ def summarize_showers(input_data, reco_output):
 
 @summarizer(columns=["trk_start_x", "trk_start_y", "trk_start_z",
                      "trk_end_x", "trk_end_y", "trk_end_z",
+                     "trk_start_dir_x", "trk_start_dir_y", "trk_start_dir_z",
                      "trk_end_dir_x", "trk_end_dir_y", "trk_end_dir_z",
                      "trk_visE"])
 def summarize_tracks(input_data, reco_output):
@@ -167,20 +168,23 @@ def summarize_tracks(input_data, reco_output):
         # finally, figure out its direction at the end of the track.
         dists = track_functions.track_voxel_dists(trk_index, input_data, reco_output, voxels)
         dists_to_end = dists[numpy.where((voxels == endpoints[1]).all(axis=1))[0]][0]
-        dir_vec = track_functions.track_end_dir(voxels, dists_to_end, endpoints)
+        end_dir_vec = track_functions.track_end_dir(voxels, dists_to_end, endpoints)
 
-        if numpy.count_nonzero(numpy.iscomplexobj(dir_vec)) > 0:
-            if numpy.count_nonzero(numpy.iscomplex(dir_vec)) > 0:
+        if numpy.count_nonzero(numpy.iscomplexobj(end_dir_vec)) > 0:
+            if numpy.count_nonzero(numpy.iscomplex(end_dir_vec)) > 0:
                 print("Ignoring track that produced complex direction vector.  Endpoints:", endpoints)
                 continue
             else:
-                dir_vec = numpy.real(dir_vec)
+                end_dir_vec = numpy.real(end_dir_vec)
+
+        dists_to_front = dists[numpy.where((voxels == endpoints[0]).all(axis=1))[0]][0]
+        start_dir_vec = track_functions.track_end_dir(voxels, dists_to_front, endpoints)
 
         # for tracks that don't wind up being the muon candidate,
         # we'll also want to know their energy deposited.
         trk_visE = [input_data["input_data"][track_functions.track_voxel_indices(trk_index, input_data, reco_output)][:, -1].sum(),]
 
-        tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], dir_vec, trk_visE]))
+        tracks_out.append(numpy.concatenate([endpoints[0], endpoints[1], start_dir_vec, end_dir_vec, trk_visE]))
 
     ret = []
     if len(tracks_out):
