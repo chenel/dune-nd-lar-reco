@@ -95,6 +95,10 @@ def track_end_dir(voxels, dists_to_end, endpoints):
 	if v.dot(dir_vec) < 0:  # if the eigenvector points the wrong way, flip it
 		dir_vec *= -1
 
+	end_norm = numpy.linalg.norm(dir_vec, axis=0)
+	if end_norm > 0:
+		dir_vec /= end_norm
+
 	return dir_vec
 
 
